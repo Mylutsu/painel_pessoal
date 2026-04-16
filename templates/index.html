@@ -38,14 +38,33 @@
             font-weight: bold;
         }
 
-        /* Estilo de cada "Post-it" ou nota que aparecerá na tela */
+        /* Ajuste no card para ele parecer mais um post-it */
         .nota-card { 
             background: white; 
             padding: 15px; 
-            margin-bottom: 15px; 
-            border-left: 8px solid #ccc; /* A cor da borda vai mudar via Python */
-            border-radius: 4px; 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            border-left: 8px solid #ccc; 
+            border-radius: 8px; /* Bordas mais arredondadas */
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); /* Sombra mais suave */
+            transition: transform 0.2s; /* Efeito de movimento ao passar o mouse */
+        }
+
+        .nota-card:hover {
+            transform: translateY(-5px); /* A nota "sobe" um pouquinho quando você passa o mouse */
+        }
+
+
+        /* Container que envolve todas as notas para elas não ficarem grudadas nas bordas */
+        .notas-container {
+            max-width: 800px;
+            margin: 0 auto;
+            display: grid; /* Transforma em uma grade */
+            grid-template-columns: 1fr 1fr; /* Divide em duas colunas se a tela for larga */
+            gap: 20px; /* Espaço entre as notas */
+        }
+
+        /* Se a tela for pequena (celular), vira uma coluna só */
+        @media (max-width: 600px) {
+            .notas-container { grid-template-columns: 1fr; }
         }
 
         /* Classes de cores baseadas na Prioridade que o usuário escolheu */
@@ -94,9 +113,9 @@
 
     <hr>
 
-    <div style="max-width: 600px; margin: 0 auto;">
-        <h2>📋 Minhas Notas</h2>
-        
+    <h2 style="text-align: center; margin-top: 40px;">📋 Minhas Notas</h2>
+
+    <div class="notas-container">
         {% for n in notas %}
         <div class="nota-card {{ n[4] }}">
             <strong>{{ n[1] }}</strong> <span style="font-size: 0.7em; background: #eee; padding: 2px 5px; border-radius: 3px; margin-left: 10px;">

@@ -14,21 +14,29 @@ def conectar_banco():
 # --- ROTA PRINCIPAL (MOSTRAR OS DADOS) ---
 @app.route('/')
 def index():
-    # 1. Abrimos a conexão
     conn = conectar_banco()
     cursor = conn.cursor()
     
-    # 2. Executamos o comando SQL para ler tudo da tabela 'notas'
-    # 'ORDER BY data_criacao DESC' faz com que a nota mais nova apareça primeiro
-    cursor.execute("SELECT * FROM notas ORDER BY data_criacao DESC")
+    # Explicando a nova consulta SQL:
+    # Usamos o CASE para dar um "peso" numérico para cada texto:
+    # Se for Alta, vale 1; Se for Média, vale 2; Se for Baixa, vale 3.
+    # Assim, ao ordenar por esse 'peso', as Altas (1) aparecem primeiro!
+    comando_sql = """
+        SELECT * FROM notas 
+        ORDER BY 
+            CASE prioridade
+                WHEN 'Alta' THEN 1
+                WHEN 'Média' THEN 2
+                WHEN 'Baixa' THEN 3
+                ELSE 4
+            END, 
+            data_criacao DESC
+    """
     
-    # 3. Guardamos todos os resultados na variável 'todas_notas'
+    cursor.execute(comando_sql)
     todas_notas = cursor.fetchall()
-    
-    # 4. Fechamos a conexão (importante para não travar o banco)
     conn.close()
     
-    # 5. Enviamos a lista de notas para o arquivo HTML
     return render_template('index.html', notas=todas_notas)
 
 # --- ROTA DE AÇÃO (SALVAR OS DADOS) ---
