@@ -2,6 +2,7 @@
 # request: captura o que o usuário digita no formulário
 # redirect/url_for: fazem o navegador pular de uma página para outra
 from flask import Flask, render_template, request, redirect, url_for
+from datetime import datetime, date
 import sqlite3
 
 app = Flask(__name__)
@@ -34,10 +35,34 @@ def index():
     """
     
     cursor.execute(comando_sql)
-    todas_notas = cursor.fetchall()
+    notas_do_banco = cursor.fetchall()
     conn.close()
+
+    hoje = date.today() #pega a data atual
+    notas_processadas = []
+
+    for n in notas_do_banco:
+        # Transformamos a tupla em lista para podermos adicionar informações novas
+        nota = list(n)
+        alerta = False
+
+        # Verificamos se existe uma data de vencimento (n[7]) e dias de aviso (n[8])
+        if n[7] and n[8]:
+            # Convertemos a data que vem do banco (texto) em um objeto de data real
+            data_venc = datetime.strptime(n[7], '%Y-%m-%d').date()
+            
+            # Calculamos a diferença de dias
+            diferenca = (data_venc - hoje).days
+            
+            # Se a diferença for menor ou igual aos dias de aviso escolhidos, ativa o alerta!
+            if diferenca <= n[8] and diferenca >= 0:
+                alerta = True
+        
+        # Adicionamos essa nova informação de "alerta" no final da nossa lista da nota
+        nota.append(alerta)
+        notas_processadas.append(nota)
     
-    return render_template('index.html', notas=todas_notas)
+    return render_template('index.html', notas=notas_processadas)
 
 # --- ROTA DE AÇÃO (SALVAR OS DADOS) ---
 # 'methods=['POST']' indica que esta rota recebe dados enviados por um formulário

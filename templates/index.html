@@ -67,6 +67,28 @@
             .notas-container { grid-template-columns: 1fr; }
         }
 
+
+        /* Estilo para o aviso de vencimento próximo */
+        .alerta-vencimento {
+            background: #fff3cd; /* Amarelo clarinho */
+            color: #856404;      /* Texto marrom escuro */
+            border: 1px solid #ffeeba;
+            padding: 5px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            margin-bottom: 10px;
+            font-weight: bold;
+            text-align: center;
+            animation: piscar 2s infinite; /* Faz o aviso "respirar" visualmente */
+        }
+
+        @keyframes piscar {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+
         /* Classes de cores baseadas na Prioridade que o usuário escolheu */
         .Alta { border-left-color: #d9534f; }   /* Vermelho para Alta */
         .Média { border-left-color: #f0ad4e; }  /* Laranja para Média */
@@ -118,6 +140,13 @@
     <div class="notas-container">
         {% for n in notas %}
         <div class="nota-card {{ n[4] }}">
+
+            {% if n[-1] == True %}
+                <div class="alerta-vencimento">
+                    ⚠️ ATENÇÃO: Vencimento Próximo!
+                </div>
+            {% endif %}
+            
             <strong>{{ n[1] }}</strong> <span style="font-size: 0.7em; background: #eee; padding: 2px 5px; border-radius: 3px; margin-left: 10px;">
                 {{ n[3] }} </span>
             
