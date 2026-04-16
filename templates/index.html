@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Meu Painel Pessoal</title>
+    <style>
+        /* Estilos básicos para o site não ficar "cru" */
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; color: #333; }
+        
+        /* Container do formulário para ficar centralizado e branco */
+        .form-container { 
+            background: white; 
+            padding: 20px; 
+            border-radius: 8px; 
+            max-width: 500px; 
+            margin: 0 auto 30px auto; /* Centraliza na tela */
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+        }
+
+        /* Fazendo com que todos os campos ocupem a largura total e tenham espaçamento */
+        input, select, textarea { 
+            width: 100%; 
+            margin: 8px 0; 
+            padding: 10px; 
+            border: 1px solid #ddd; 
+            border-radius: 4px; 
+            box-sizing: border-box; /* Garante que o padding não aumente o tamanho do campo */
+        }
+
+        button { 
+            background: #28a745; 
+            color: white; 
+            border: none; 
+            padding: 12px; 
+            width: 100%; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-weight: bold;
+        }
+
+        /* Estilo de cada "Post-it" ou nota que aparecerá na tela */
+        .nota-card { 
+            background: white; 
+            padding: 15px; 
+            margin-bottom: 15px; 
+            border-left: 8px solid #ccc; /* A cor da borda vai mudar via Python */
+            border-radius: 4px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        /* Classes de cores baseadas na Prioridade que o usuário escolheu */
+        .Alta { border-left-color: #d9534f; }   /* Vermelho para Alta */
+        .Média { border-left-color: #f0ad4e; }  /* Laranja para Média */
+        .Baixa { border-left-color: #5cb85c; }  /* Verde para Baixa */
+
+    </style>
+</head>
+<body>
+
+    <div class="form-container">
+        <h2>📌 Nova Anotação</h2>
+        <form action="/adicionar" method="POST">
+            
+            <input type="text" name="titulo" placeholder="Título da nota" required>
+            
+            <textarea name="conteudo" rows="3" placeholder="Escreva os detalhes aqui..."></textarea>
+            
+            <select name="categoria">
+                <option value="Estudo">📚 Estudo</option>
+                <option value="Financeiro">💰 Financeiro</option>
+                <option value="Trabalho">💼 Trabalho</option>
+                <option value="Pessoal">🏠 Pessoal</option>
+            </select>
+
+            <select name="prioridade">
+                <option value="Baixa">Prioridade: Baixa</option>
+                <option value="Média" selected>Prioridade: Média</option>
+                <option value="Alta">Prioridade: Alta</option>
+            </select>
+
+            <select name="tipo">
+                <option value="Nota">📝 Apenas Nota</option>
+                <option value="Lembrete">⏰ Lembrete (Com Prazo)</option>
+            </select>
+
+            <label style="font-size: 0.8em; color: #666;">Data de Vencimento (se houver):</label>
+            <input type="date" name="vencimento">
+            
+            <input type="number" name="aviso" placeholder="Avisar quantos dias antes?">
+
+            <button type="submit">Salvar no Painel</button>
+        </form>
+    </div>
+
+    <hr>
+
+    <div style="max-width: 600px; margin: 0 auto;">
+        <h2>📋 Minhas Notas</h2>
+        
+        {% for n in notas %}
+        <div class="nota-card {{ n[4] }}">
+            <strong>{{ n[1] }}</strong> <span style="font-size: 0.7em; background: #eee; padding: 2px 5px; border-radius: 3px; margin-left: 10px;">
+                {{ n[3] }} </span>
+            
+            <p style="margin: 10px 0;">{{ n[2] }}</p> <div style="font-size: 0.8em; color: #888;">
+                Prioridade: {{ n[4] }} | 
+                Prazo: {{ n[7] if n[7] else 'Não definido' }}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+</body>
+</html>
