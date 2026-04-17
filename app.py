@@ -44,9 +44,14 @@ def index():
     for n in notas_do_banco:
         nota = list(n)
         status_vencimento = "em_dia" # Status padrão
+        data_formatada = "Sem Prazo" # texto padrão caso não tenha data
         
         if n[7]: # Se tiver uma data de vencimento
             data_venc = datetime.strptime(n[7], '%Y-%m-%d').date()
+            
+            # %d = dia, %m = mês, %Y = ano com 4 dígitos
+            data_formatada = data_venc.strftime('%d/%m/%Y')
+
             diferenca = (data_venc - hoje).days
             
             # LÓGICA DE TRÊS ESTADOS:
@@ -54,6 +59,10 @@ def index():
                 status_vencimento = "vencido"
             elif n[8] and diferenca <= n[8]:
                 status_vencimento = "alerta"
+
+        # Agora, em vez de enviar a data bruta, vamos substituir pela formatada
+        # Na nossa tabela, a data de vencimento é o índice 7
+        nota[7] = data_formatada
         
         # Adicionamos esse status no final da lista da nota
         nota.append(status_vencimento)
@@ -89,6 +98,22 @@ def adicionar():
     conn.close()
     
     # 7. Após salvar, mandamos o usuário de volta para a página inicial
+    return redirect(url_for('index'))
+
+# Rota para excluir (deletar) uma nota
+# O <int:id> captura o número da nota que queremos apagar
+@app.route('/excluir/<int:id>')
+def excluir(id):
+    conn = conectar_banco()
+    cursor = conn.cursor()
+    
+    # O comando SQL para remover a linha específica do banco
+    cursor.execute("DELETE FROM notas WHERE id = ?", (id,))
+    
+    conn.commit()
+    conn.close()
+    
+    # Após apagar, redireciona para a página inicial para atualizar a lista
     return redirect(url_for('index'))
 
 if __name__ == "__main__":

@@ -80,6 +80,9 @@
             font-weight: bold;
             text-align: center;
             animation: piscar 2s infinite; /* Faz o aviso "respirar" visualmente */
+            display: block; /* Garante que ele se comporte como bloco */
+            margin-right: 110px; /* Cria um "espaço reservado" na direita para o botão não bater nele */
+            clear: none; /* Impede que o alerta tente subir para o lado do botão concluir */
         }
 
         /* Estilo para o que já passou do prazo */
@@ -95,12 +98,36 @@
             text-align: center;
             /* Sem animação de piscar para não cansar a vista, 
             o vermelho fixo já chama atenção suficiente */
+            display: block; /* Garante que ele se comporte como bloco */
+            margin-right: 110px; /* Cria um "espaço reservado" na direita para o botão não bater nele */
+            clear: none; /* Impede que o alerta tente subir para o lado do botão concluir */
         }
 
         @keyframes piscar {
             0% { opacity: 1; }
             50% { opacity: 0.5; }
             100% { opacity: 1; }
+        }
+        
+
+        /* Estilo para o botão de concluir/excluir */
+        .btn-concluir {
+            float: right; /* Joga o botão para o canto direito */
+            background-color: #f8f9fa;
+            color: #28a745;
+            border: 1px solid #28a745;
+            padding: 5px 10px;
+            border-radius: 4px;
+            text-decoration: none; /* Tira o sublinhado do link */
+            font-size: 0.8em;
+            font-weight: bold;
+            position:relative;
+            z-index: 10; /* Garante que o botão fique "em cima" de qualquer animação */
+        }
+
+        .btn-concluir:hover {
+            background-color: #28a745;
+            color: white;
         }
 
 
@@ -156,6 +183,8 @@
         {% for n in notas %}
         <div class="nota-card {{ n[4] }}">
 
+            <a href="/excluir/{{ n[0] }}" class="btn-concluir">✅ Concluir</a>
+
             {% if n[-1] == "vencido" %}
                 <div class="alerta-vencido">
                     🚫 JÁ VENCEU! (Prazo encerrado)
@@ -165,13 +194,17 @@
                     ⚠️ ATENÇÃO: Vencimento Próximo!
                 </div>
             {% endif %}
+
+            <div style="margin-top: 10px; clear: both;">
+                <strong>{{ n[1] }}</strong>
+                <span style="font-size: 0.7em; background: #eee; padding: 2px 5px; border-radius: 3px; margin-left: 10px;"> {{ n[3] }} </span>
+            </div>
             
-            <strong>{{ n[1] }}</strong> <span style="font-size: 0.7em; background: #eee; padding: 2px 5px; border-radius: 3px; margin-left: 10px;">
-                {{ n[3] }} </span>
+            <p style="margin: 10px 0;">{{ n[2] }}</p>
             
-            <p style="margin: 10px 0;">{{ n[2] }}</p> <div style="font-size: 0.8em; color: #888;">
+            <div style="font-size: 0.8em; color: #888;">
                 Prioridade: {{ n[4] }} | 
-                Prazo: {{ n[7] if n[7] else 'Não definido' }}
+                Prazo: {{ n[7] }}
             </div>
         </div>
         {% endfor %}
