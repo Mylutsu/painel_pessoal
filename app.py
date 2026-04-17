@@ -41,6 +41,12 @@ def index():
     hoje = date.today() #pega a data atual
     notas_processadas = []
 
+
+    #CONTADORES PARA O DASH BOARD
+    total_vencidas = 0
+    total_alertas = 0
+
+
     for n in notas_do_banco:
         nota = list(n)
         status_vencimento = "em_dia" # Status padrão
@@ -57,8 +63,10 @@ def index():
             # LÓGICA DE TRÊS ESTADOS:
             if diferenca < 0:
                 status_vencimento = "vencido"
+                total_vencidas += 1
             elif n[8] and diferenca <= n[8]:
                 status_vencimento = "alerta"
+                total_alertas += 1
 
         # Agora, em vez de enviar a data bruta, vamos substituir pela formatada
         # Na nossa tabela, a data de vencimento é o índice 7
@@ -68,7 +76,7 @@ def index():
         nota.append(status_vencimento)
         notas_processadas.append(nota)
     
-    return render_template('index.html', notas=notas_processadas)
+    return render_template('index.html', notas=notas_processadas, vencidas=total_vencidas, alertas=total_alertas, total=len(notas_processadas))
 
 # --- ROTA DE AÇÃO (SALVAR OS DADOS) ---
 # 'methods=['POST']' indica que esta rota recebe dados enviados por um formulário
