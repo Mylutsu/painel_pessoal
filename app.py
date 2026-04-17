@@ -88,8 +88,8 @@ def adicionar():
     categoria = request.form.get('categoria')
     prioridade = request.form.get('prioridade')
     tipo = request.form.get('tipo')
-    vencimento = request.form.get('vencimento') # Pode vir vazio
-    aviso = request.form.get('aviso') # Pode vir vazio
+    vencimento = request.form.get('data_vencimento') # Pode vir vazio
+    aviso = request.form.get('dias_aviso') # Pode vir vazio
 
     conn = conectar_banco()
     cursor = conn.cursor()
@@ -123,6 +123,36 @@ def excluir(id):
     
     # Após apagar, redireciona para a página inicial para atualizar a lista
     return redirect(url_for('index'))
+
+
+@app.route('/editar/<int:id>', methods=['GET', 'POST'])
+def editar(id):
+    conn = sqlite3.connect('painel_dados.db') # Nome correto do seu banco
+    cursor = conn.cursor()
+
+    if request.method == 'POST':
+        titulo = request.form['titulo']
+        conteudo = request.form['conteudo']
+        categoria = request.form['categoria']
+        prioridade = request.form['prioridade']
+        tipo = request.form['tipo'] # Coluna que você tem no banco
+        data_vencimento = request.form['data_vencimento']
+        dias_aviso = request.form['dias_aviso'] # Nome correto da coluna
+
+        cursor.execute("""
+            UPDATE notas 
+            SET titulo = ?, conteudo = ?, categoria = ?, prioridade = ?, tipo = ?, data_vencimento = ?, dias_aviso = ?
+            WHERE id = ?
+        """, (titulo, conteudo, categoria, prioridade, tipo, data_vencimento, dias_aviso, id))
+        
+        conn.commit()
+        conn.close()
+        return redirect(url_for('index'))
+
+    cursor.execute("SELECT * FROM notas WHERE id = ?", (id,))
+    nota = cursor.fetchone()
+    conn.close()
+    return render_template('editar.html', nota=nota)
 
 if __name__ == "__main__":
     app.run(debug=True)

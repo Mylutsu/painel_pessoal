@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Editar Nota</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; color: #333; }
+        .form-container { background: white; padding: 20px; border-radius: 8px; max-width: 500px; margin: 0 auto; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        input, select, textarea { width: 100%; margin: 8px 0; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        .btn-salvar { background: #007bff; color: white; border: none; padding: 12px; width: 100%; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-cancelar { display: block; text-align: center; margin-top: 10px; color: #666; text-decoration: none; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h2>✏️ Editar Anotação</h2>
+        <form method="POST">
+            <input type="text" name="titulo" value="{{ nota[1] }}" required>
+            <textarea name="conteudo" rows="3">{{ nota[2] }}</textarea>
+            
+            <select name="categoria">
+                <option value="Estudo" {% if nota[3] == 'Estudo' %}selected{% endif %}>📚 Estudo</option>
+                <option value="Financeiro" {% if nota[3] == 'Financeiro' %}selected{% endif %}>💰 Financeiro</option>
+                <option value="Trabalho" {% if nota[3] == 'Trabalho' %}selected{% endif %}>💼 Trabalho</option>
+                <option value="Pessoal" {% if nota[3] == 'Pessoal' %}selected{% endif %}>🏠 Pessoal</option>
+            </select>
+
+            <select name="prioridade">
+                <option value="Baixa" {% if nota[4] == 'Baixa' %}selected{% endif %}>Baixa</option>
+                <option value="Média" {% if nota[4] == 'Média' %}selected{% endif %}>Média</option>
+                <option value="Alta" {% if nota[4] == 'Alta' %}selected{% endif %}>Alta</option>
+            </select>
+
+            <select name="tipo">
+                <option value="Nota" {% if nota[5] == 'Nota' %}selected{% endif %}>📝 Nota</option>
+                <option value="Lembrete" {% if nota[5] == 'Lembrete' %}selected{% endif %}>⏰ Lembrete</option>
+            </select>
+
+            <label style="font-size: 0.8em; color: #666;">Vencimento:</label>
+            <input type="date" name="data_vencimento" value="{{ nota[7] }}">
+            
+            <label style="font-size: 0.8em; color: #666;">Avisar quantos dias antes?</label>
+            <input type="number" name="dias_aviso" value="{{ nota[8] }}">
+            <button type="submit" class="btn-salvar">Salvar Alterações</button>
+            <a href="/" class="btn-cancelar">Cancelar</a>
+        </form>
+    </div>
+</body>
+</html>

@@ -107,7 +107,9 @@
             text-align: center;
             animation: piscar 2s infinite; /* Faz o aviso "respirar" visualmente */
             display: block; /* Garante que ele se comporte como bloco */
-            margin-right: 110px; /* Cria um "espaço reservado" na direita para o botão não bater nele */
+            margin-right: 180px; /* Cria um "espaço reservado" na direita para o botão não bater nele */
+            position: relative; 
+            z-index: 1; /* Alerta fica na camada de baixo */
             clear: none; /* Impede que o alerta tente subir para o lado do botão concluir */
         }
 
@@ -125,7 +127,9 @@
             /* Sem animação de piscar para não cansar a vista, 
             o vermelho fixo já chama atenção suficiente */
             display: block; /* Garante que ele se comporte como bloco */
-            margin-right: 110px; /* Cria um "espaço reservado" na direita para o botão não bater nele */
+            margin-right: 180px; /* Cria um "espaço reservado" na direita para o botão não bater nele */
+            position: relative;
+            z-index: 1; /* Alerta fica na camada de baixo */
             clear: none; /* Impede que o alerta tente subir para o lado do botão concluir */
         }
 
@@ -153,6 +157,26 @@
 
         .btn-concluir:hover {
             background-color: #28a745;
+            color: white;
+        }
+
+        .btn-editar {
+            float: right;
+            margin-right: 10px;
+            background-color: #f8f9fa;
+            color: #007bff;
+            border: 1px solid #007bff;
+            padding: 5px 10px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 0.8em;
+            font-weight: bold;
+            position: relative;
+            z-index: 10; /* Botão fica na camada de cima, clicável */
+        }
+
+        .btn-editar:hover {
+            background-color: #007bff;
             color: white;
         }
 
@@ -193,9 +217,9 @@
             </select>
 
             <label style="font-size: 0.8em; color: #666;">Data de Vencimento (se houver):</label>
-            <input type="date" name="vencimento">
+            <input type="date" name="data_vencimento">
             
-            <input type="number" name="aviso" placeholder="Avisar quantos dias antes?">
+            <input type="number" name="dias_aviso" placeholder="Avisar quantos dias antes?">
 
             <button type="submit">Salvar no Painel</button>
         </form>
@@ -225,6 +249,8 @@
         <div class="nota-card {{ n[4] }}">
 
             <a href="/excluir/{{ n[0] }}" class="btn-concluir">✅ Concluir</a>
+
+            <a href="/editar/{{ n[0] }}" class="btn-editar">✏️ Editar</a>
 
             {% if n[-1] == "vencido" %}
                 <div class="alerta-vencido">
