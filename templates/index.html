@@ -82,6 +82,21 @@
             animation: piscar 2s infinite; /* Faz o aviso "respirar" visualmente */
         }
 
+        /* Estilo para o que já passou do prazo */
+        .alerta-vencido {
+            background: #f8d7da; /* Vermelho clarinho */
+            color: #721c24;      /* Texto bordô */
+            border: 1px solid #f5c6cb;
+            padding: 5px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            margin-bottom: 10px;
+            font-weight: bold;
+            text-align: center;
+            /* Sem animação de piscar para não cansar a vista, 
+            o vermelho fixo já chama atenção suficiente */
+        }
+
         @keyframes piscar {
             0% { opacity: 1; }
             50% { opacity: 0.5; }
@@ -141,7 +156,11 @@
         {% for n in notas %}
         <div class="nota-card {{ n[4] }}">
 
-            {% if n[-1] == True %}
+            {% if n[-1] == "vencido" %}
+                <div class="alerta-vencido">
+                    🚫 JÁ VENCEU! (Prazo encerrado)
+                </div>
+            {% elif n[-1] == "alerta" %}
                 <div class="alerta-vencimento">
                     ⚠️ ATENÇÃO: Vencimento Próximo!
                 </div>

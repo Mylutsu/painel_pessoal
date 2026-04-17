@@ -42,24 +42,21 @@ def index():
     notas_processadas = []
 
     for n in notas_do_banco:
-        # Transformamos a tupla em lista para podermos adicionar informações novas
         nota = list(n)
-        alerta = False
-
-        # Verificamos se existe uma data de vencimento (n[7]) e dias de aviso (n[8])
-        if n[7] and n[8]:
-            # Convertemos a data que vem do banco (texto) em um objeto de data real
+        status_vencimento = "em_dia" # Status padrão
+        
+        if n[7]: # Se tiver uma data de vencimento
             data_venc = datetime.strptime(n[7], '%Y-%m-%d').date()
-            
-            # Calculamos a diferença de dias
             diferenca = (data_venc - hoje).days
             
-            # Se a diferença for menor ou igual aos dias de aviso escolhidos, ativa o alerta!
-            if diferenca <= n[8] and diferenca >= 0:
-                alerta = True
+            # LÓGICA DE TRÊS ESTADOS:
+            if diferenca < 0:
+                status_vencimento = "vencido"
+            elif n[8] and diferenca <= n[8]:
+                status_vencimento = "alerta"
         
-        # Adicionamos essa nova informação de "alerta" no final da nossa lista da nota
-        nota.append(alerta)
+        # Adicionamos esse status no final da lista da nota
+        nota.append(status_vencimento)
         notas_processadas.append(nota)
     
     return render_template('index.html', notas=notas_processadas)
