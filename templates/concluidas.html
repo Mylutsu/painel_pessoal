@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8 Mirror">
+    <title>Histórico de Concluídas</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"> <style>
+        /* Reutilizando seu estilo do index para manter o padrão */
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; color: #333; }
+        .nota-card { background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border-left: 5px solid #28a745; }
+        .btn-voltar { display: inline-block; padding: 10px 20px; background: #6c757d; color: white; text-decoration: none; border-radius: 5px; margin-bottom: 20px; }
+        .btn-voltar:hover { background: #5a6268; }
+        .container { max-width: 800px; margin: 0 auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="btn-voltar">⬅️ Voltar ao Painel Principal</a>
+        
+        <h2 style="text-align: center;">✅ Histórico de Notas Concluídas</h2>
+        <p style="text-align: center; color: #666;">Estas são as tarefas que você já finalizou.</p>
+
+        <div class="notas-container">
+            {% for n in notas %}
+            <div class="nota-card" style="border-left: 5px solid #28a745;">
+                <strong>{{ n[1] }}</strong>
+                <p>{{ n[2] }}</p>
+                <small>Categoria: {{ n[3] }} | Vencimento original: {{ n[7] }}</small>
+            </div>
+            {% else %}
+            <p style="text-align: center; color: #999;">Nenhuma nota concluída ainda.</p>
+            {% endfor %}
+        </div>
+    </div>
+</body>
+</html>

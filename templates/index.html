@@ -210,6 +210,25 @@
             box-shadow: 0 2px 5px rgba(0,123,255,0.3);
         }
 
+        .busca-container {
+            max-width: 500px;
+            margin: 0 auto 20px auto;
+        }
+
+        #inputBusca {
+            width: 100%;
+            padding: 12px 20px;
+            border: 2px solid #ddd;
+            border-radius: 25px;
+            font-size: 1em;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        #inputBusca:focus {
+            border-color: #007bff;
+        }
+
 
         /* Classes de cores baseadas na Prioridade que o usuário escolheu */
         .Alta { border-left-color: #d9534f; }   /* Vermelho para Alta */
@@ -261,17 +280,31 @@
 
     <div class="dashboard">
         <div class="card-resumo">
-            <span class="text-azul">{{ total }}</span>
-            <small>Total</small>
+            <h3>{{ total }}</h3>
+            <p>Pendentes</p>
         </div>
-        <div class="card-resumo">
-            <span class="text-vermelho">{{ vencidas }}</span>
-            <small>Vencidas</small>
+        <div class="card-resumo" style="border-bottom: 4px solid #ff4d4d;">
+            <h3>{{ vencidas }}</h3>
+            <p>Vencidas</p>
         </div>
-        <div class="card-resumo">
-            <span class="text-amarelo">{{ alertas }}</span>
-            <small>Alertas</small>
+        <div class="card-resumo" style="border-bottom: 4px solid #ffcc00;">
+            <h3>{{ alertas }}</h3>
+            <p>Em Alerta</p>
         </div>
+        <div class="card-resumo" style="border-bottom: 4px solid #28a745;">
+            <h3>{{ concluidas_total }}</h3>
+            <p>Concluídas</p>
+        </div>
+    </div>
+
+
+    <!--"onkeyup -> é o que faz que toda vez que o usuário digitar e soltar a tecla, as notas atualizam, rodando o script "filtrarBusca()"-->
+    <div class="busca-container">
+        <input type="text" id="inputBusca" placeholder="🔍 Pesquisar pelo título..." onkeyup="filtrarBusca()">
+    </div>
+
+    <div style="text-align: center; margin-top: 10px;">
+        <a href="/concluidas" style="color: #666; font-size: 0.9em;">📂 Ver Histórico de Concluídas</a>
     </div>
 
     <div class="filtros-container">
@@ -286,7 +319,7 @@
         {% for n in notas %}
         <div class="nota-card {{ n[4] }}">
 
-            <a href="/excluir/{{ n[0] }}" class="btn-concluir">✅ Concluir</a>
+            <a href="/concluir/{{ n[0] }}" class="btn-concluir">✅ Concluir</a>
 
             <a href="/editar/{{ n[0] }}" class="btn-editar">✏️ Editar</a>
 
@@ -314,6 +347,35 @@
         </div>
         {% endfor %}
     </div>
+
+    <script>
+    function filtrarBusca() {
+        // 1. Pega o valor digitado e transforma em minúsculo
+        // "toLowerCase() é o que transforma em minúsculo"
+        let input = document.getElementById('inputBusca').value.toLowerCase();
+        
+        // 2. Pega todos os cartões de notas
+        // O JS cria uma lista (parecida com uma lista do Python) contendo todos os elementos que têm a classe CSS .nota-card.
+        let notas = document.getElementsByClassName('nota-card');
+
+        // 3. Percorre cada nota
+        // Entra em cada nota para verificar o conteúdo
+        for (let i = 0; i < notas.length; i++) {
+            // Pega o título da nota (que está dentro do <strong>)
+            // Dentro do cartão atual (notas[i]), ele procura pela tag <strong> (onde está o seu título). Ele pega o texto (innerText) e também transforma em minúsculo.
+            let titulo = notas[i].getElementsByTagName('strong')[0].innerText.toLowerCase();
+            
+            // 4. Se o título contiver o que foi digitado, mostra. Se não, esconde.
+            // includes(input): Verifica se o texto da busca está "dentro" do título.
+            // style.display = "none": Isso é puro CSS via JS. É o que dá o efeito da nota "sumir" / não aparecer
+            if (titulo.includes(input)) {
+                notas[i].style.display = "";
+            } else {
+                notas[i].style.display = "none";
+            }
+        }
+    }
+    </script>
 
 </body>
 </html>

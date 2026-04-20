@@ -21,13 +21,13 @@ def index():
     #captura a categoria da URL (se existir)
     categoria_filtrada = request.args.get('categoria')
 
-    #base da nossa consulta SQL
-    comando_sql = "SELECT * FROM notas"
+    # 1. Filtro de exibição (Apenas Ativas)
+    comando_sql = "SELECT * FROM notas WHERE status = 'Ativo'"
     parametros = []
 
     #se houver filtro e não for "Todas", adicionamos o WHERE
     if categoria_filtrada and categoria_filtrada != 'Todas':
-        comando_sql += " WHERE categoria = ?"
+        comando_sql += " AND categoria = ?"
         parametros.append(categoria_filtrada)
 
     # Explicando a nova consulta SQL:
@@ -49,28 +49,27 @@ def index():
     notas = cursor.fetchall()
 
     # --- Lógica do Dashboard (Mantemos global para você ver o total geral) ---
-    cursor.execute("SELECT COUNT(*) FROM notas")
-    total = cursor.fetchone()[0]
-
-    # Pegamos todas para o cálculo de alertas/vencidos do dashboard
-    cursor.execute("SELECT data_vencimento, dias_aviso FROM notas")
-    datas = cursor.fetchall()
-
-
+    # 2. Lógica do Dashboard (Cálculos baseados em todas as Ativas)
+    cursor.execute("SELECT * FROM notas WHERE status = 'Ativo'")
+    todas_ativas = cursor.fetchall()
+    total = len(todas_ativas)
     vencidas = 0
     alertas = 0
     hoje = date.today()
 
-    for d_venc, d_aviso in datas:
-        if d_venc:
-            data_v = datetime.strptime(d_venc, '%Y-%m-%d').date()
+    for n in todas_ativas:
+        if n[7]:
+            data_v = datetime.strptime(n[7], '%Y-%m-%d').date()
             diferenca = (data_v - hoje).days
             if diferenca < 0:
                 vencidas += 1
-            elif diferenca <= (d_aviso or 3):
+            elif diferenca <= (n[8] or 3): #contagem para alerta de aviso ou popar alerta em 3 dias
                 alertas +=1
+    # 3. Contagem de Concluídas para o Dashboard
+    cursor.execute("SELECT COUNT (*) FROM notas WHERE status = 'Concluido'")
+    concluidas_total = cursor.fetchone()[0]
 
-
+    # 4. Processamento para exibição no HTML
     notas_processadas = []
     for n in notas:
         n_lista = list(n)
@@ -92,6 +91,7 @@ def index():
                            total = total,
                            vencidas = vencidas,
                            alertas = alertas,
+                           concluidas_total=concluidas_total,
                            categoria_ativa = categoria_filtrada or 'Todas')
 
 # --- ROTA DE AÇÃO (SALVAR OS DADOS) ---
@@ -126,18 +126,18 @@ def adicionar():
 
 # Rota para excluir (deletar) uma nota
 # O <int:id> captura o número da nota que queremos apagar
-@app.route('/excluir/<int:id>')
-def excluir(id):
+@app.route('/concluir/<int:id>')
+def concluir(id):
     conn = conectar_banco()
     cursor = conn.cursor()
     
     # O comando SQL para remover a linha específica do banco
-    cursor.execute("DELETE FROM notas WHERE id = ?", (id,))
+    cursor.execute("UPDATE notas SET status = 'Concluido' WHERE id = ?", (id,))
     
     conn.commit()
     conn.close()
     
-    # Após apagar, redireciona para a página inicial para atualizar a lista
+    # Após concluir a nota, redireciona para a página inicial para atualizar a lista
     return redirect(url_for('index'))
 
 
@@ -169,6 +169,29 @@ def editar(id):
     nota = cursor.fetchone()
     conn.close()
     return render_template('editar.html', nota=nota)
+
+
+@app.route('/concluidas')
+def concluidas():
+    conn = conectar_banco()
+    cursor = conn.cursor()
+    
+    # Busca apenas as que marcamos como Concluído
+    cursor.execute("SELECT * FROM notas WHERE status = 'Concluido' ORDER BY data_criacao DESC")
+    notas = cursor.fetchall()
+
+
+    notas_processadas = []
+    for n in notas:
+        n_lista = list(n)
+        if n[7]:
+            data_v = datetime.strptime(n[7], '%Y-%m-%d').date()
+            n_lista[7] = data_v.strftime('%d/%m/%Y')
+        notas_processadas.append(n_lista)
+
+    conn.close()
+    
+    return render_template('concluidas.html', notas=notas_processadas)
 
 if __name__ == "__main__":
     app.run(debug=True)
