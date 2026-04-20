@@ -17,13 +17,24 @@ def conectar_banco():
 def index():
     conn = conectar_banco()
     cursor = conn.cursor()
-    
+
+    #captura a categoria da URL (se existir)
+    categoria_filtrada = request.args.get('categoria')
+
+    #base da nossa consulta SQL
+    comando_sql = "SELECT * FROM notas"
+    parametros = []
+
+    #se houver filtro e não for "Todas", adicionamos o WHERE
+    if categoria_filtrada and categoria_filtrada != 'Todas':
+        comando_sql += " WHERE categoria = ?"
+        parametros.append(categoria_filtrada)
+
     # Explicando a nova consulta SQL:
     # Usamos o CASE para dar um "peso" numérico para cada texto:
     # Se for Alta, vale 1; Se for Média, vale 2; Se for Baixa, vale 3.
     # Assim, ao ordenar por esse 'peso', as Altas (1) aparecem primeiro!
-    comando_sql = """
-        SELECT * FROM notas 
+    comando_sql += """
         ORDER BY 
             CASE prioridade
                 WHEN 'Alta' THEN 1
@@ -34,49 +45,54 @@ def index():
             data_criacao DESC
     """
     
-    cursor.execute(comando_sql)
-    notas_do_banco = cursor.fetchall()
-    conn.close()
+    cursor.execute(comando_sql, parametros)
+    notas = cursor.fetchall()
 
-    hoje = date.today() #pega a data atual
+    # --- Lógica do Dashboard (Mantemos global para você ver o total geral) ---
+    cursor.execute("SELECT COUNT(*) FROM notas")
+    total = cursor.fetchone()[0]
+
+    # Pegamos todas para o cálculo de alertas/vencidos do dashboard
+    cursor.execute("SELECT data_vencimento, dias_aviso FROM notas")
+    datas = cursor.fetchall()
+
+
+    vencidas = 0
+    alertas = 0
+    hoje = date.today()
+
+    for d_venc, d_aviso in datas:
+        if d_venc:
+            data_v = datetime.strptime(d_venc, '%Y-%m-%d').date()
+            diferenca = (data_v - hoje).days
+            if diferenca < 0:
+                vencidas += 1
+            elif diferenca <= (d_aviso or 3):
+                alertas +=1
+
+
     notas_processadas = []
-
-
-    #CONTADORES PARA O DASH BOARD
-    total_vencidas = 0
-    total_alertas = 0
-
-
-    for n in notas_do_banco:
-        nota = list(n)
-        status_vencimento = "em_dia" # Status padrão
-        data_formatada = "Sem Prazo" # texto padrão caso não tenha data
+    for n in notas:
+        n_lista = list(n)
+        status_visual = ""
         
         if n[7]: # Se tiver uma data de vencimento
-            data_venc = datetime.strptime(n[7], '%Y-%m-%d').date()
-            
-            # %d = dia, %m = mês, %Y = ano com 4 dígitos
-            data_formatada = data_venc.strftime('%d/%m/%Y')
+            data_v = datetime.strptime(n[7], '%Y-%m-%d').date()
+            diferenca = (data_v - hoje).days
+            if diferenca < 0: status_visual = "vencido"
+            elif diferenca <= (n[8] or 3): status_visual = "alerta"
+            n_lista[7] = data_v.strftime('%d/%m/%Y') #formatação para data brasileira
 
-            diferenca = (data_venc - hoje).days
-            
-            # LÓGICA DE TRÊS ESTADOS:
-            if diferenca < 0:
-                status_vencimento = "vencido"
-                total_vencidas += 1
-            elif n[8] and diferenca <= n[8]:
-                status_vencimento = "alerta"
-                total_alertas += 1
+        n_lista.append(status_visual)
+        notas_processadas.append(n_lista)
 
-        # Agora, em vez de enviar a data bruta, vamos substituir pela formatada
-        # Na nossa tabela, a data de vencimento é o índice 7
-        nota[7] = data_formatada
-        
-        # Adicionamos esse status no final da lista da nota
-        nota.append(status_vencimento)
-        notas_processadas.append(nota)
-    
-    return render_template('index.html', notas=notas_processadas, vencidas=total_vencidas, alertas=total_alertas, total=len(notas_processadas))
+    conn.close()
+    return render_template('index.html',
+                           notas = notas_processadas,
+                           total = total,
+                           vencidas = vencidas,
+                           alertas = alertas,
+                           categoria_ativa = categoria_filtrada or 'Todas')
 
 # --- ROTA DE AÇÃO (SALVAR OS DADOS) ---
 # 'methods=['POST']' indica que esta rota recebe dados enviados por um formulário

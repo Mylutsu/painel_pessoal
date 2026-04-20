@@ -180,6 +180,36 @@
             color: white;
         }
 
+        .filtros-container {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn-filtro {
+            padding: 8px 16px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            text-decoration: none;
+            color: #555;
+            font-size: 0.9em;
+            transition: all 0.3s;
+        }
+
+        .btn-filtro:hover {
+            background: #e9ecef;
+        }
+
+        .btn-filtro.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+            box-shadow: 0 2px 5px rgba(0,123,255,0.3);
+        }
+
 
         /* Classes de cores baseadas na Prioridade que o usuário escolheu */
         .Alta { border-left-color: #d9534f; }   /* Vermelho para Alta */
@@ -242,6 +272,14 @@
             <span class="text-amarelo">{{ alertas }}</span>
             <small>Alertas</small>
         </div>
+    </div>
+
+    <div class="filtros-container">
+        <a href="/" class="btn-filtro {% if categoria_ativa == 'Todas' %}active{% endif %}">📂 Todas</a>
+        <a href="/?categoria=Estudo" class="btn-filtro {% if categoria_ativa == 'Estudo' %}active{% endif %}">📚 Estudo</a>
+        <a href="/?categoria=Financeiro" class="btn-filtro {% if categoria_ativa == 'Financeiro' %}active{% endif %}">💰 Financeiro</a>
+        <a href="/?categoria=Trabalho" class="btn-filtro {% if categoria_ativa == 'Trabalho' %}active{% endif %}">💼 Trabalho</a>
+        <a href="/?categoria=Pessoal" class="btn-filtro {% if categoria_ativa == 'Pessoal' %}active{% endif %}">🏠 Pessoal</a>
     </div>
 
     <div class="notas-container">
