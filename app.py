@@ -193,5 +193,18 @@ def concluidas():
     
     return render_template('concluidas.html', notas=notas_processadas)
 
+@app.route('/restaurar/<int:id>')
+def restaurar(id):
+    conn = conectar_banco()
+    cursor = conn.cursor()
+    
+    # Mudamos o status de volta para 'Ativo'
+    cursor.execute("UPDATE notas SET status = 'Ativo' WHERE id = ?", (id,))
+    
+    conn.commit()
+    conn.close()
+    
+    return redirect(url_for('index'))
+
 if __name__ == "__main__":
     app.run(debug=True)
