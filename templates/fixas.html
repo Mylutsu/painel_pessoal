@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Gerenciar Contas Fixas</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .card-formulario { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 30px; }
+        .nota-card { background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 5px solid #007bff; display: flex; justify-content: space-between; align-items: center; }
+        input, select, textarea, button { padding: 10px; margin: 5px 0; width: 100%; box-sizing: border-box; }
+        button { background: #28a745; color: white; border: none; cursor: pointer; border-radius: 4px; font-weight: bold; }
+        .btn-voltar { display: inline-block; padding: 10px 20px; background: #6c757d; color: white; text-decoration: none; border-radius: 5px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="btn-voltar">⬅️ Voltar ao Painel Principal</a>
+        
+        <h2 style="text-align: center;">⚙️ Modelos de Contas Fixas</h2>
+
+        <div class="card-formulario">
+            <h3>Adicionar Nova Conta Recorrente</h3>
+            <form action="/fixas" method="POST">
+                <input type="text" name="titulo" placeholder="Ex: Aluguel do Apartamento" required>
+                <textarea name="conteudo" placeholder="Detalhes (Ex: Pagar na conta X)"></textarea>
+                <select name="categoria">
+                    <option value="Moradia">Moradia</option>
+                    <option value="Serviços">Serviços (Água, Luz, Internet)</option>
+                    <option value="Assinaturas">Assinaturas</option>
+                </select>
+                <label>Vencimento Base:</label>
+                <input type="date" name="data_vencimento" required>
+                <label>Custo Estimado (R$):</label>
+                <input type="number" step="0.01" name="nota_custo" placeholder="Ex: 1500.00">
+                
+                <button type="submit">Salvar Modelo Fixo</button>
+            </form>
+        </div>
+
+        <h3>Meus Modelos Ativos</h3>
+        <div class="notas-container">
+            {% for m in modelos %}
+            <div class="nota-card">
+                <div>
+                    <strong>{{ m[1] }}</strong>
+                    <p style="margin: 5px 0; color: #555;">{{ m[2] }}</p>
+                    <small>Vencimento Base: {{ m[7] }} | Custo Estimado: R$ {{ m[11] }}</small>
+                </div>
+            </div>
+            {% else %}
+            <p style="text-align: center; color: #999;">Você ainda não cadastrou nenhuma conta fixa.</p>
+            {% endfor %}
+        </div>
+    </div>
+</body>
+</html>

@@ -21,8 +21,8 @@ def index():
     #captura a categoria da URL (se existir)
     categoria_filtrada = request.args.get('categoria')
 
-    # 1. Filtro de exibição (Apenas Ativas)
-    comando_sql = "SELECT * FROM notas WHERE status = 'Ativo'"
+    # 1. Filtro de exibição (Apenas Ativas e que NÃO SÃO modelos)
+    comando_sql = "SELECT * FROM notas WHERE status = 'Ativo' AND nota_modelo = 0"
     parametros = []
 
     #se houver filtro e não for "Todas", adicionamos o WHERE
@@ -49,8 +49,8 @@ def index():
     notas = cursor.fetchall()
 
     # --- Lógica do Dashboard (Mantemos global para você ver o total geral) ---
-    # 2. Lógica do Dashboard (Cálculos baseados em todas as Ativas)
-    cursor.execute("SELECT * FROM notas WHERE status = 'Ativo'")
+    # 2. Lógica do Dashboard (Cálculos baseados em todas as Ativas e nas que NÃO SÃO modelos)
+    cursor.execute("SELECT * FROM notas WHERE status = 'Ativo' AND nota_modelo = 0")
     todas_ativas = cursor.fetchall()
     total = len(todas_ativas)
     vencidas = 0
@@ -205,6 +205,36 @@ def restaurar(id):
     conn.close()
     
     return redirect(url_for('index'))
+
+
+@app.route('/fixas', methods=['GET', 'POST'])
+def fixas():
+    conn = conectar_banco()
+    cursor = conn.cursor()
+
+    if request.method == 'POST':
+        # Captura os dados do formulário de contas fixas
+        titulo = request.form['titulo']
+        conteudo = request.form['conteudo']
+        categoria = request.form['categoria']
+        data_vencimento = request.form['data_vencimento'] # Data base
+        nota_custo = request.form['nota_custo']
+
+        # Inserimos no banco com nota_modelo = 1
+        cursor.execute('''
+            INSERT INTO notas (titulo, conteudo, categoria, prioridade, data_criacao, data_vencimento, status, nota_modelo, nota_custo)
+            VALUES (?, ?, ?, 'Média', date('now'), ?, 'Ativo', 1, ?)
+        ''', (titulo, conteudo, categoria, data_vencimento, nota_custo))
+        
+        conn.commit()
+        return redirect(url_for('fixas'))
+
+    # Busca apenas as notas que SÃO modelos
+    cursor.execute("SELECT * FROM notas WHERE nota_modelo = 1 ORDER BY data_criacao DESC")
+    modelos = cursor.fetchall()
+    conn.close()
+
+    return render_template('fixas.html', modelos=modelos)
 
 if __name__ == "__main__":
     app.run(debug=True)
