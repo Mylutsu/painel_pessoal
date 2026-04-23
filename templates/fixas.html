@@ -47,6 +47,13 @@
                     <p style="margin: 5px 0; color: #555;">{{ m[2] }}</p>
                     <small>Vencimento Base: {{ m[7] }} | Custo Estimado: R$ {{ m[11] }}</small>
                 </div>
+
+                <a href="/deletar-fixa/{{ m[0] }}" 
+                onclick="return confirm('Excluir este modelo de conta fixa?')"
+                style="background: #dc3545; color: white; padding: 5px 10px; border-radius: 4px; text-decoration: none; font-size: 0.8em;">
+                🗑️ Excluir
+                </a>
+
             </div>
             {% else %}
             <p style="text-align: center; color: #999;">Você ainda não cadastrou nenhuma conta fixa.</p>

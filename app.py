@@ -15,6 +15,9 @@ def conectar_banco():
 # --- ROTA PRINCIPAL (MOSTRAR OS DADOS) ---
 @app.route('/')
 def index():
+
+    processar_automacao_mensal()
+
     conn = conectar_banco()
     cursor = conn.cursor()
 
@@ -143,7 +146,7 @@ def concluir(id):
 
 @app.route('/editar/<int:id>', methods=['GET', 'POST'])
 def editar(id):
-    conn = sqlite3.connect('painel_dados.db') # Nome correto do seu banco
+    conn = conectar_banco()
     cursor = conn.cursor()
 
     if request.method == 'POST':
@@ -151,15 +154,16 @@ def editar(id):
         conteudo = request.form['conteudo']
         categoria = request.form['categoria']
         prioridade = request.form['prioridade']
-        tipo = request.form['tipo'] # Coluna que você tem no banco
+        tipo = request.form['tipo']
         data_vencimento = request.form['data_vencimento']
-        dias_aviso = request.form['dias_aviso'] # Nome correto da coluna
+        dias_aviso = request.form['dias_aviso']
+        nota_custo = request.form['nota_custo'] # Pegando o custo do formulário
 
         cursor.execute("""
             UPDATE notas 
-            SET titulo = ?, conteudo = ?, categoria = ?, prioridade = ?, tipo = ?, data_vencimento = ?, dias_aviso = ?
+            SET titulo = ?, conteudo = ?, categoria = ?, prioridade = ?, tipo = ?, data_vencimento = ?, dias_aviso = ?, nota_custo = ?
             WHERE id = ?
-        """, (titulo, conteudo, categoria, prioridade, tipo, data_vencimento, dias_aviso, id))
+        """, (titulo, conteudo, categoria, prioridade, tipo, data_vencimento, dias_aviso, nota_custo, id))
         
         conn.commit()
         conn.close()
@@ -235,6 +239,52 @@ def fixas():
     conn.close()
 
     return render_template('fixas.html', modelos=modelos)
+
+@app.route('/deletar-fixa/<int:id>')
+def deletar_fixa(id):
+    conn = conectar_banco()
+    cursor = conn.cursor()
+    # Deleta apenas se for nota_modelo = 1 (segurança extra)
+    cursor.execute("DELETE FROM notas WHERE id = ? AND nota_modelo = 1", (id,))
+    conn.commit()
+    conn.close()
+    return redirect(url_for('fixas'))
+
+@app.route('/gerar-mensais')
+def gerar_mensais():
+    processar_automacao_mensal() #chama a lógica
+    return redirect(url_for('index')) #volta pro home
+
+def processar_automacao_mensal():
+    conn = conectar_banco()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT * FROM notas WHERE nota_modelo = 1")
+    modelos = cursor.fetchall()
+    
+    hoje = date.today()
+    mes_referencia_atual = hoje.strftime('%m-%Y') # Selo do mês atual
+    
+    for m in modelos:
+        # Agora checamos pelo TITULO e pelo MES_REFERENCIA (independente da data de vencimento)
+        cursor.execute("""
+            SELECT 1 FROM notas 
+            WHERE titulo = ? 
+            AND mes_referencia = ? 
+            AND nota_modelo = 0
+        """, (m[1], mes_referencia_atual))
+        
+        if not cursor.fetchone():
+            data_base = datetime.strptime(m[7], '%Y-%m-%d').date()
+            nova_data = date(hoje.year, hoje.month, data_base.day)
+            
+            cursor.execute('''
+                INSERT INTO notas (titulo, conteudo, categoria, prioridade, tipo, data_vencimento, status, nota_modelo, nota_custo, dias_aviso, mes_referencia)
+                VALUES (?, ?, ?, 'Alta', 'Lembrete', ?, 'Ativo', 0, ?, 5, ?)
+            ''', (m[1], m[2], m[3], nova_data, m[11], mes_referencia_atual))
+    
+    conn.commit()
+    conn.close()
 
 if __name__ == "__main__":
     app.run(debug=True)

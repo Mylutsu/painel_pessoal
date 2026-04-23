@@ -5,14 +5,19 @@ def atualizar_banco():
     cursor = conn.cursor()
     
     try:
-        # Adiciona a coluna para saber se é modelo fixo
+        # Colunas que você já tem (garantindo que não dê erro se rodar de novo)
         cursor.execute("ALTER TABLE notas ADD COLUMN nota_modelo INTEGER DEFAULT 0")
-        # Adiciona a coluna para o valor da conta
         cursor.execute("ALTER TABLE notas ADD COLUMN nota_custo REAL DEFAULT 0.0")
+    except:
+        pass
+
+    try:
+        # NOVA COLUNA: mes_referencia (Ex: "04-2026")
+        cursor.execute("ALTER TABLE notas ADD COLUMN mes_referencia TEXT")
         conn.commit()
-        print("✅ Banco atualizado com sucesso!")
+        print("✅ Coluna 'mes_referencia' adicionada!")
     except sqlite3.OperationalError:
-        print("⚠️ As colunas já existem ou o banco não foi encontrado.")
+        print("⚠️ A coluna já existe.")
     finally:
         conn.close()
 

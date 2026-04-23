@@ -39,6 +39,9 @@
             <label style="font-size: 0.8em; color: #666;">Vencimento:</label>
             <input type="date" name="data_vencimento" value="{{ nota[7] }}">
             
+            <label style="font-size: 0.8em; color: #666;">Valor/Custo (R$):</label>
+            <input type="number" step="0.01" name="nota_custo" value="{{ nota[11] }}">
+            
             <label style="font-size: 0.8em; color: #666;">Avisar quantos dias antes?</label>
             <input type="number" name="dias_aviso" value="{{ nota[8] }}">
             <button type="submit" class="btn-salvar">Salvar Alterações</button>
