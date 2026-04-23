@@ -18,11 +18,19 @@
             <input type="text" name="titulo" value="{{ nota[1] }}" required>
             <textarea name="conteudo" rows="3">{{ nota[2] }}</textarea>
             
+            <label style="font-size: 0.8em; color: #666;">Categoria:</label>
             <select name="categoria">
-                <option value="Estudo" {% if nota[3] == 'Estudo' %}selected{% endif %}>📚 Estudo</option>
-                <option value="Financeiro" {% if nota[3] == 'Financeiro' %}selected{% endif %}>💰 Financeiro</option>
-                <option value="Trabalho" {% if nota[3] == 'Trabalho' %}selected{% endif %}>💼 Trabalho</option>
-                <option value="Pessoal" {% if nota[3] == 'Pessoal' %}selected{% endif %}>🏠 Pessoal</option>
+                {# Verificamos se é um modelo OU se já possui uma categoria financeira #}
+                {% if nota[10] == 1 or nota[3] in ['Moradia', 'Serviços', 'Assinaturas'] %}
+                    <option value="Moradia" {% if nota[3] == 'Moradia' %}selected{% endif %}>🏠 Moradia</option>
+                    <option value="Serviços" {% if nota[3] == 'Serviços' %}selected{% endif %}>⚡ Serviços (Água, Luz...)</option>
+                    <option value="Assinaturas" {% if nota[3] == 'Assinaturas' %}selected{% endif %}>📺 Assinaturas</option>
+                {% else %}
+                    <option value="Estudo" {% if nota[3] == 'Estudo' %}selected{% endif %}>📚 Estudo</option>
+                    <option value="Financeiro" {% if nota[3] == 'Financeiro' %}selected{% endif %}>💰 Financeiro</option>
+                    <option value="Trabalho" {% if nota[3] == 'Trabalho' %}selected{% endif %}>💼 Trabalho</option>
+                    <option value="Pessoal" {% if nota[3] == 'Pessoal' %}selected{% endif %}>🏠 Pessoal</option>
+                {% endif %}
             </select>
 
             <select name="prioridade">

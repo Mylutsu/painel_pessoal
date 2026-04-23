@@ -59,6 +59,7 @@ def index():
     vencidas = 0
     alertas = 0
     hoje = date.today()
+    mes_atual = hoje.strftime('%m-%Y') #para filtrar a soma do mes
 
     for n in todas_ativas:
         if n[7]:
@@ -68,6 +69,17 @@ def index():
                 vencidas += 1
             elif diferenca <= (n[8] or 3): #contagem para alerta de aviso ou popar alerta em 3 dias
                 alertas +=1
+
+    #Cálculo da soma financeira
+    #Somar apenas as notas ativas do mes atual
+    cursor.execute("""
+        SELECT SUM(nota_custo) FROM notas
+        WHERE status = 'Ativo'
+        AND nota_modelo = 0
+        AND strftime('%m-%Y', data_vencimento) = ?
+        """, (mes_atual,))
+    soma_financeira = cursor.fetchone()[0] or 0.0
+
     # 3. Contagem de Concluídas para o Dashboard
     cursor.execute("SELECT COUNT (*) FROM notas WHERE status = 'Concluido'")
     concluidas_total = cursor.fetchone()[0]
@@ -94,6 +106,7 @@ def index():
                            total = total,
                            vencidas = vencidas,
                            alertas = alertas,
+                           soma_financeira = soma_financeira,
                            concluidas_total=concluidas_total,
                            categoria_ativa = categoria_filtrada or 'Todas')
 
@@ -167,7 +180,11 @@ def editar(id):
         
         conn.commit()
         conn.close()
-        return redirect(url_for('index'))
+        # Se a nota editada era um modelo, volta para a página de fixas
+        if nota[10] == 1:
+            return redirect(url_for('fixas'))
+        else:
+            return redirect(url_for('index'))
 
     cursor.execute("SELECT * FROM notas WHERE id = ?", (id,))
     nota = cursor.fetchone()
