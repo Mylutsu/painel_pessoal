@@ -1,8 +1,15 @@
 import sqlite3
 
+def conectar():
+    return sqlite3.connect('painel_dados.db')
+
 def criar_estrutura():
-    conexao = sqlite3.connect('painel_dados.db')
+    conexao = conectar()
     cursor = conexao.cursor()
+
+    #limpar tabelas caso necessário
+    cursor.execute("DROP TABLE IF EXISTS notas")
+    cursor.execute("DROP TABLE IF EXISTS categorias")
 
     # Criando a tabela de anotações e lembretes
     cursor.execute('''
@@ -19,6 +26,24 @@ def criar_estrutura():
             status TEXT DEFAULT 'Ativo' -- Ex: Ativo ou Concluído
         )
     ''')
+
+    #Nova tabela para categorias
+    cursor.execute('''
+        CREATE TABLE categorias (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nome TEXT NOT NULL UNIQUE,
+            emoji TEXT
+        )
+    ''')
+    # Inserir categorias padrão
+    categorias_padrao = [
+        ('Estudo', '📚'),
+        ('Financeiro', '💰'),
+        ('Trabalho', '💼'),
+        ('Pessoal', '🏠'),
+        ('Saúde', '⚕️')
+    ]
+    cursor.executemany('INSERT OR IGNORE INTO categorias (nome, emoji) VALUES (?, ?)', categorias_padrao)
 
     conexao.commit()
     conexao.close()

@@ -247,11 +247,10 @@
             
             <textarea name="conteudo" rows="3" placeholder="Escreva os detalhes aqui..."></textarea>
             
-            <select name="categoria">
-                <option value="Estudo">📚 Estudo</option>
-                <option value="Financeiro">💰 Financeiro</option>
-                <option value="Trabalho">💼 Trabalho</option>
-                <option value="Pessoal">🏠 Pessoal</option>
+            <select name="categoria" required>
+                {% for cat in categorias %}
+                    <option value="{{ cat[0] }}">{{ cat[1] }} {{ cat[0] }}</option>
+                {% endfor %}
             </select>
 
             <select name="prioridade">
@@ -271,6 +270,15 @@
             <input type="number" name="dias_aviso" placeholder="Avisar quantos dias antes?">
 
             <button type="submit">Salvar no Painel</button>
+        </form>
+    </div>
+
+    <div class="form-container" style="margin-top: 10px; background: #fdfdfd; border: 1px dashed #ccc;">
+        <h3 style="margin-top: 0;">🛠️ Cadastrar Nova Categoria</h3>
+        <form action="/adicionar_categoria" method="POST" style="display: flex; gap: 10px; align-items: center;">
+            <input type="text" name="emoji" placeholder="Emoji (ex: 🚀)" style="width: 30%; margin: 0;" required>
+            <input type="text" name="nome" placeholder="Nome (ex: Faculdade)" style="width: 50%; margin: 0;" required>
+            <button type="submit" style="width: 20%; padding: 10px; background: #007bff; margin: 0;">+</button>
         </form>
     </div>
 
@@ -309,10 +317,10 @@
 
     <div class="filtros-container">
         <a href="/" class="btn-filtro {% if categoria_ativa == 'Todas' %}active{% endif %}">📂 Todas</a>
-        <a href="/?categoria=Estudo" class="btn-filtro {% if categoria_ativa == 'Estudo' %}active{% endif %}">📚 Estudo</a>
-        <a href="/?categoria=Financeiro" class="btn-filtro {% if categoria_ativa == 'Financeiro' %}active{% endif %}">💰 Financeiro</a>
-        <a href="/?categoria=Trabalho" class="btn-filtro {% if categoria_ativa == 'Trabalho' %}active{% endif %}">💼 Trabalho</a>
-        <a href="/?categoria=Pessoal" class="btn-filtro {% if categoria_ativa == 'Pessoal' %}active{% endif %}">🏠 Pessoal</a>
+
+        {% for cat in categorias %}
+            <a href="/?categoria={{ cat[0] }}" class="btn-filtro {% if categoria_ativa == cat[0] %}active{% endif %}"> {{ cat[1] }} {{ cat[0] }} </a>
+        {% endfor %}
     </div>
 
     <div class="notas-container">

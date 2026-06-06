@@ -85,13 +85,17 @@ def index():
         n_lista.append(status_visual)
         notas_processadas.append(n_lista)
 
+    cursor.execute("SELECT nome, emoji FROM categorias")
+    lista_categorias = cursor.fetchall()
+
     conn.close()
     return render_template('index.html',
                            notas = notas_processadas,
                            total = total,
                            vencidas = vencidas,
                            alertas = alertas,
-                           concluidas_total=concluidas_total,
+                           concluidas_total = concluidas_total,
+                           categorias = lista_categorias,
                            categoria_ativa = categoria_filtrada or 'Todas')
 
 # --- ROTA DE AÇÃO (SALVAR OS DADOS) ---
@@ -123,6 +127,26 @@ def adicionar():
     
     # 7. Após salvar, mandamos o usuário de volta para a página inicial
     return redirect(url_for('index'))
+
+#Rota para adicionar novas categorias
+@app.route('/adicionar_categoria', methods=['POST'])
+def adicionar_categoria():
+    nome = request.form['nome'].strip()
+    emoji = request.form['emoji'].strip()
+    
+    if nome:
+        conn = conectar_banco()
+        cursor = conn.cursor()
+        try:
+            # Insere a nova categoria no banco dinamicamente!
+            cursor.execute("INSERT INTO categorias (nome, emoji) VALUES (?, ?)", (nome, emoji))
+            conn.commit()
+        except sqlite3.IntegrityError:
+            pass # Ignora se tentar adicionar uma categoria com o mesmo nome
+        conn.close()
+        
+    return redirect(url_for('index'))
+
 
 # Rota para excluir (deletar) uma nota
 # O <int:id> captura o número da nota que queremos apagar
