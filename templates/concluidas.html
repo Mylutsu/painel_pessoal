@@ -21,21 +21,29 @@
 
         <div class="notas-container">
             {% for n in notas %}
-            <div class="nota-card" style="border-left: 5px solid #28a745; display: flex; justify-content: space-between; align-items: center;">
+            <div class="nota-card" style="border-left: 5px solid #28a745; padding: 15px; margin-bottom: 15px;">
                 <div>
-                    <strong>{{ n[1] }}</strong>
-                    <p>{{ n[2] }}</p>
-                    <small>Categoria: {{ n[3] }} | Vencimento original: {{ n[7] }}</small>
+                    <strong style="font-size: 1.1em;">{{ n[1] }}</strong>
+                    <p style="margin: 8px 0; color: #444;">{{ n[2] }}</p>
+                    <div style="margin-bottom: 12px;">
+                        <small style="color: #666; background: #eee; padding: 2px 6px; border-radius: 3px;">
+                            Categoria: {{ n[3] }}
+                        </small>
+                        {% if n[7] %}
+                        <small style="color: #666; background: #eee; padding: 2px 6px; border-radius: 3px; margin-left: 5px;">
+                            Vencimento original: {{ n[7] }}
+                        </small>
+                        {% endif %}
+                    </div>
                 </div>
 
                 <a href="/restaurar/{{ n[0] }}" 
-                style="text-decoration: none; background: #007bff; color: white; padding: 5px 10px; border-radius: 4px; font-size: 0.8em; white-space: nowrap; margin-left: 10px;">
-                🔄 Restaurar
+                   style="text-decoration: none; background: #007bff; color: white; padding: 6px 12px; border-radius: 4px; font-size: 0.85em; font-weight: bold; display: inline-block; transition: background 0.2s;"
+                   onmouseover="this.style.background='#0056b3'"
+                   onmouseout="this.style.background='#007bff'">
+                   ↩️ Restaurar Nota
                 </a>
-
             </div>
-            {% else %}
-            <p style="text-align: center; color: #999;">Nenhuma nota concluída ainda.</p>
             {% endfor %}
         </div>
     </div>

@@ -132,7 +132,8 @@ def concluir(id):
     cursor = conn.cursor()
     
     # O comando SQL para remover a linha específica do banco
-    cursor.execute("UPDATE notas SET status = 'Concluido' WHERE id = ?", (id,))
+    concluido = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    cursor.execute("UPDATE notas SET status = 'Concluido', data_criacao = ? WHERE id = ?", (concluido, id,))
     
     conn.commit()
     conn.close()
