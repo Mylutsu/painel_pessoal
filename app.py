@@ -85,7 +85,7 @@ def index():
         n_lista.append(status_visual)
         notas_processadas.append(n_lista)
 
-    cursor.execute("SELECT nome, emoji FROM categorias")
+    cursor.execute("SELECT id, nome, emoji FROM categorias")
     lista_categorias = cursor.fetchall()
 
     conn.close()
@@ -146,6 +146,18 @@ def adicionar_categoria():
         conn.close()
         
     return redirect(url_for('index'))
+#Rota para excluir categorias pelo ID
+@app.route('/excluir_categoria/<int:id>')
+def excluir_categoria(id):
+    conn = conectar_banco()
+    cursor = conn.cursor()
+    
+    # Remove a categoria usando o ID único dela
+    cursor.execute("DELETE FROM categorias WHERE id = ?", (id,))
+    
+    conn.commit()
+    conn.close()
+    return redirect(url_for('index'))
 
 
 # Rota para excluir (deletar) uma nota
@@ -205,8 +217,12 @@ def editar(id):
 
     cursor.execute("SELECT * FROM notas WHERE id = ?", (id,))
     nota = cursor.fetchone()
+
+    cursor.execute("SELECT id, nome, emoji FROM categorias")
+    lista_categorias = cursor.fetchall()
+
     conn.close()
-    return render_template('editar.html', nota=nota)
+    return render_template('editar.html', nota=nota, categorias=lista_categorias)
 
 
 @app.route('/concluidas')

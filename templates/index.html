@@ -248,8 +248,8 @@
             <textarea name="conteudo" rows="3" placeholder="Escreva os detalhes aqui..."></textarea>
             
             <select name="categoria" required>
-                {% for cat in categorias %}
-                    <option value="{{ cat[0] }}">{{ cat[1] }} {{ cat[0] }}</option>
+                {% for categoria in categorias %}
+                    <option value="{{ categoria[1] }}">{{ categoria[2] }} {{ categoria[1] }}</option>
                 {% endfor %}
             </select>
 
@@ -275,11 +275,22 @@
 
     <div class="form-container" style="margin-top: 10px; background: #fdfdfd; border: 1px dashed #ccc;">
         <h3 style="margin-top: 0;">🛠️ Cadastrar Nova Categoria</h3>
-        <form action="/adicionar_categoria" method="POST" style="display: flex; gap: 10px; align-items: center;">
+        <form action="/adicionar_categoria" method="POST" style="display: flex; gap: 10px; align-items: center; margin-bottom: 15px;">
             <input type="text" name="emoji" placeholder="Emoji (ex: 🚀)" style="width: 30%; margin: 0;" required>
             <input type="text" name="nome" placeholder="Nome (ex: Faculdade)" style="width: 50%; margin: 0;" required>
             <button type="submit" style="width: 20%; padding: 10px; background: #007bff; margin: 0;">+</button>
         </form>
+
+        <div style="display: flex; flex-wrap: wrap; gap: 8px; border-top: 1px solid #eee; padding-top: 10px;">
+            {% for cat in categorias %}
+                <div style="background: #f1f3f5; padding: 4px 10px; border-radius: 20px; font-size: 0.85em; display: flex; align-items: center; gap: 6px; border: 1px solid #e9ecef;">
+                    <span>{{ cat[2] }} {{ cat[1] }}</span>
+                    <a href="/excluir_categoria/{{ cat[0] }}" 
+                       style="color: #dc3545; text-decoration: none; font-weight: bold; font-size: 1.1em; line-height: 1;" 
+                       onclick="return confirm('Tem certeza que deseja excluir a categoria &quot;{{ cat[1] }}&quot;?')">×</a>
+                </div>
+            {% endfor %}
+        </div>
     </div>
 
     <hr>
@@ -318,8 +329,8 @@
     <div class="filtros-container">
         <a href="/" class="btn-filtro {% if categoria_ativa == 'Todas' %}active{% endif %}">📂 Todas</a>
 
-        {% for cat in categorias %}
-            <a href="/?categoria={{ cat[0] }}" class="btn-filtro {% if categoria_ativa == cat[0] %}active{% endif %}"> {{ cat[1] }} {{ cat[0] }} </a>
+        {% for categoria in categorias %}
+            <a href="/?categoria={{ categoria[1] }}" class="btn-filtro {% if categoria_ativa == categoria[1] %}active{% endif %}"> {{ categoria[2] }} {{ categoria[1] }} </a>
         {% endfor %}
     </div>
 

@@ -18,11 +18,12 @@
             <input type="text" name="titulo" value="{{ nota[1] }}" required>
             <textarea name="conteudo" rows="3">{{ nota[2] }}</textarea>
             
-            <select name="categoria">
-                <option value="Estudo" {% if nota[3] == 'Estudo' %}selected{% endif %}>📚 Estudo</option>
-                <option value="Financeiro" {% if nota[3] == 'Financeiro' %}selected{% endif %}>💰 Financeiro</option>
-                <option value="Trabalho" {% if nota[3] == 'Trabalho' %}selected{% endif %}>💼 Trabalho</option>
-                <option value="Pessoal" {% if nota[3] == 'Pessoal' %}selected{% endif %}>🏠 Pessoal</option>
+            <select name="categoria" required>
+                {% for categoria in categorias %}
+                    <option value="{{ categoria[1] }}" {% if nota[3] == categoria[1] %}selected{% endif %}>
+                        {{ categoria[2] }} {{ categoria[1] }}
+                    </option>
+                {% endfor %}
             </select>
 
             <select name="prioridade">
