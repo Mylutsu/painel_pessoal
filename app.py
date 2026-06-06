@@ -141,6 +141,19 @@ def concluir(id):
     # Após concluir a nota, redireciona para a página inicial para atualizar a lista
     return redirect(url_for('index'))
 
+@app.route('/restaurar/<int:id>')
+def restaurar(id):
+    conn = conectar_banco()
+    cursor = conn.cursor()
+    
+    # Atualiza para Ativo e renova o timestamp para o momento atual
+    restaurado = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    cursor.execute("UPDATE notas SET status = 'Ativo', data_criacao = ? WHERE id = ?", (restaurado, id))
+    
+    conn.commit()
+    conn.close()
+    return redirect(url_for('concluidas'))
+
 
 @app.route('/editar/<int:id>', methods=['GET', 'POST'])
 def editar(id):
@@ -193,19 +206,6 @@ def concluidas():
     conn.close()
     
     return render_template('concluidas.html', notas=notas_processadas)
-
-@app.route('/restaurar/<int:id>')
-def restaurar(id):
-    conn = conectar_banco()
-    cursor = conn.cursor()
-    
-    # Mudamos o status de volta para 'Ativo'
-    cursor.execute("UPDATE notas SET status = 'Ativo' WHERE id = ?", (id,))
-    
-    conn.commit()
-    conn.close()
-    
-    return redirect(url_for('index'))
 
 if __name__ == "__main__":
     app.run(debug=True)
