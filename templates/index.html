@@ -3,241 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <title>Meu Painel Pessoal</title>
-    <style>
-        /* Estilos básicos para o site não ficar "cru" */
-        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; color: #333; }
-        
-        /* Container do formulário para ficar centralizado e branco */
-        .form-container { 
-            background: white; 
-            padding: 20px; 
-            border-radius: 8px; 
-            max-width: 500px; 
-            margin: 0 auto 30px auto; /* Centraliza na tela */
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
-        }
-
-        .dashboard {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        .card-resumo {
-            background: white;
-            padding: 15px 25px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            text-align: center;
-            min-width: 120px;
-        }
-
-        .card-resumo span {
-            display: block;
-            font-size: 1.8em;
-            font-weight: bold;
-        }
-
-        .text-vermelho { color: #d9534f; }
-        .text-amarelo { color: #f0ad4e; }
-        .text-azul { color: #0275d8; }
-
-        /* Fazendo com que todos os campos ocupem a largura total e tenham espaçamento */
-        input, select, textarea { 
-            width: 100%; 
-            margin: 8px 0; 
-            padding: 10px; 
-            border: 1px solid #ddd; 
-            border-radius: 4px; 
-            box-sizing: border-box; /* Garante que o padding não aumente o tamanho do campo */
-        }
-
-        button { 
-            background: #28a745; 
-            color: white; 
-            border: none; 
-            padding: 12px; 
-            width: 100%; 
-            border-radius: 4px; 
-            cursor: pointer; 
-            font-weight: bold;
-        }
-
-        /* Ajuste no card para ele parecer mais um post-it */
-        .nota-card { 
-            background: white; 
-            padding: 15px; 
-            border-left: 8px solid #ccc; 
-            border-radius: 8px; /* Bordas mais arredondadas */
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1); /* Sombra mais suave */
-            transition: transform 0.2s; /* Efeito de movimento ao passar o mouse */
-        }
-
-        .nota-card:hover {
-            transform: translateY(-5px); /* A nota "sobe" um pouquinho quando você passa o mouse */
-        }
-
-
-        /* Container que envolve todas as notas para elas não ficarem grudadas nas bordas */
-        .notas-container {
-            max-width: 800px;
-            margin: 0 auto;
-            display: grid; /* Transforma em uma grade */
-            grid-template-columns: 1fr 1fr; /* Divide em duas colunas se a tela for larga */
-            gap: 20px; /* Espaço entre as notas */
-        }
-
-        /* Se a tela for pequena (celular), vira uma coluna só */
-        @media (max-width: 600px) {
-            .notas-container { grid-template-columns: 1fr; }
-        }
-
-
-        /* Estilo para o aviso de vencimento próximo */
-        .alerta-vencimento {
-            background: #fff3cd; /* Amarelo clarinho */
-            color: #856404;      /* Texto marrom escuro */
-            border: 1px solid #ffeeba;
-            padding: 5px;
-            border-radius: 4px;
-            font-size: 0.8em;
-            margin-bottom: 10px;
-            font-weight: bold;
-            text-align: center;
-            animation: piscar 2s infinite; /* Faz o aviso "respirar" visualmente */
-            display: block; /* Garante que ele se comporte como bloco */
-            margin-right: 180px; /* Cria um "espaço reservado" na direita para o botão não bater nele */
-            position: relative; 
-            z-index: 1; /* Alerta fica na camada de baixo */
-            clear: none; /* Impede que o alerta tente subir para o lado do botão concluir */
-        }
-
-        /* Estilo para o que já passou do prazo */
-        .alerta-vencido {
-            background: #f8d7da; /* Vermelho clarinho */
-            color: #721c24;      /* Texto bordô */
-            border: 1px solid #f5c6cb;
-            padding: 5px;
-            border-radius: 4px;
-            font-size: 0.8em;
-            margin-bottom: 10px;
-            font-weight: bold;
-            text-align: center;
-            /* Sem animação de piscar para não cansar a vista, 
-            o vermelho fixo já chama atenção suficiente */
-            display: block; /* Garante que ele se comporte como bloco */
-            margin-right: 180px; /* Cria um "espaço reservado" na direita para o botão não bater nele */
-            position: relative;
-            z-index: 1; /* Alerta fica na camada de baixo */
-            clear: none; /* Impede que o alerta tente subir para o lado do botão concluir */
-        }
-
-        @keyframes piscar {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
-        }
-        
-
-        /* Estilo para o botão de concluir/excluir */
-        .btn-concluir {
-            float: right; /* Joga o botão para o canto direito */
-            background-color: #f8f9fa;
-            color: #28a745;
-            border: 1px solid #28a745;
-            padding: 5px 10px;
-            border-radius: 4px;
-            text-decoration: none; /* Tira o sublinhado do link */
-            font-size: 0.8em;
-            font-weight: bold;
-            position:relative;
-            z-index: 10; /* Garante que o botão fique "em cima" de qualquer animação */
-        }
-
-        .btn-concluir:hover {
-            background-color: #28a745;
-            color: white;
-        }
-
-        .btn-editar {
-            float: right;
-            margin-right: 10px;
-            background-color: #f8f9fa;
-            color: #007bff;
-            border: 1px solid #007bff;
-            padding: 5px 10px;
-            border-radius: 4px;
-            text-decoration: none;
-            font-size: 0.8em;
-            font-weight: bold;
-            position: relative;
-            z-index: 10; /* Botão fica na camada de cima, clicável */
-        }
-
-        .btn-editar:hover {
-            background-color: #007bff;
-            color: white;
-        }
-
-        .filtros-container {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-
-        .btn-filtro {
-            padding: 8px 16px;
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 20px;
-            text-decoration: none;
-            color: #555;
-            font-size: 0.9em;
-            transition: all 0.3s;
-        }
-
-        .btn-filtro:hover {
-            background: #e9ecef;
-        }
-
-        .btn-filtro.active {
-            background: #007bff;
-            color: white;
-            border-color: #007bff;
-            box-shadow: 0 2px 5px rgba(0,123,255,0.3);
-        }
-
-        .busca-container {
-            max-width: 500px;
-            margin: 0 auto 20px auto;
-        }
-
-        #inputBusca {
-            width: 100%;
-            padding: 12px 20px;
-            border: 2px solid #ddd;
-            border-radius: 25px;
-            font-size: 1em;
-            outline: none;
-            transition: border-color 0.3s;
-        }
-
-        #inputBusca:focus {
-            border-color: #007bff;
-        }
-
-
-        /* Classes de cores baseadas na Prioridade que o usuário escolheu */
-        .Alta { border-left-color: #d9534f; }   /* Vermelho para Alta */
-        .Média { border-left-color: #f0ad4e; }  /* Laranja para Média */
-        .Baixa { border-left-color: #5cb85c; }  /* Verde para Baixa */
-
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+
+    <button class="btn-dark-toggle" id="darkToggle">🌙 Modo Escuro</button>
+
+    <script>
+        // 1. CAPTURA DO ELEMENTO
+        // O 'document.getElementById' vai até o HTML e localiza o botão que criamos acima usando o ID "darkToggle".
+        // O 'const' cria uma variável (um contêiner) imutável para guardar essa referência.
+        const darkToggle = document.getElementById('darkToggle');
+        
+        // 2. VERIFICAÇÃO DE PREFERÊNCIA SALVA (PERSISTÊNCIA)
+        // O 'localStorage' é uma pequena memória que o navegador disponibiliza para o seu site.
+        // Aqui perguntamos: "O usuário já tinha deixado o tema como 'dark' antes?"
+        if (localStorage.getItem('theme') === 'dark') {
+            
+            // Se sim, vamos na tag <body> da página (document.body) e adicionamos (.classList.add) a classe 'dark-mode'.
+            // Isso faz com que o CSS que explicamos lá em cima entre em ação imediatamente.
+            document.body.classList.add('dark-mode');
+            
+            // Mudamos o texto escrito dentro do botão (.innerText) para sugerir a volta ao modo claro.
+            darkToggle.innerText = '☀️ Modo Claro';
+        }
+
+        // 3. OUVIDO DE EVENTOS (EVENT LISTENER)
+        // Aqui dizemos ao botão: "Fique escutando/esperando o usuário fazer uma ação".
+        // O primeiro argumento é 'click' (a ação) e o segundo é a função (o que fazer quando clicar).
+        // O símbolo '()' seguido por '=>' é chamado de Arrow Function (uma forma moderna de escrever funções em JS).
+        darkToggle.addEventListener('click', () => {
+            
+            // O '.toggle' é fantástico! Ele funciona como um interruptor de lâmpada:
+            // Se a classe 'dark-mode' NÃO existir no <body>, ele a ADICIONA.
+            // Se a classe 'dark-mode' JÁ EXISTIR no <body>, ele a REMOVE.
+            document.body.classList.toggle('dark-mode');
+            
+            // 4. ATUALIZAÇÃO DO STATUS E DA MEMÓRIA
+            // Agora fazemos um teste usando um 'if' (se) para saber o estado atual após o clique:
+            // O '.contains' verifica: "A tag body está com a classe 'dark-mode' ativa agora?"
+            if (document.body.classList.contains('dark-mode')) {
+                
+                // Se estiver ativa, salvamos no localStorage a chave 'theme' com o valor 'dark'.
+                // Assim, quando o usuário mudar de página ou recarregar, o site lembrará dessa escolha.
+                localStorage.setItem('theme', 'dark');
+                
+                // Mudamos o texto do botão para o Sol.
+                darkToggle.innerText = '☀️ Modo Claro';
+                
+            } else {
+                // Caso contrário (se o usuário acabou de desativar o modo escuro):
+                
+                // Atualizamos a memória do navegador dizendo que o tema agora é 'light' (claro).
+                localStorage.setItem('theme', 'light');
+                
+                // Mudamos o texto do botão de volta para a Lua.
+                darkToggle.innerText = '🌙 Modo Escuro';
+            }
+        });
+    </script>
 
     <div class="form-container">
         <h2>📌 Nova Anotação</h2>
@@ -282,12 +106,12 @@
         </form>
 
         <div style="display: flex; flex-wrap: wrap; gap: 8px; border-top: 1px solid #eee; padding-top: 10px;">
-            {% for cat in categorias %}
-                <div style="background: #f1f3f5; padding: 4px 10px; border-radius: 20px; font-size: 0.85em; display: flex; align-items: center; gap: 6px; border: 1px solid #e9ecef;">
-                    <span>{{ cat[2] }} {{ cat[1] }}</span>
-                    <a href="/excluir_categoria/{{ cat[0] }}" 
+            {% for categoria in categorias %}
+                <div class="categoria-badge" style="background: #f1f3f5; padding: 4px 10px; border-radius: 20px; font-size: 0.85em; display: flex; align-items: center; gap: 6px; border: 1px solid #e9ecef;">
+                    <span>{{ categoria[2] }} {{ categoria[1] }}</span>
+                    <a href="/excluir_categoria/{{ categoria[0] }}" 
                        style="color: #dc3545; text-decoration: none; font-weight: bold; font-size: 1.1em; line-height: 1;" 
-                       onclick="return confirm('Tem certeza que deseja excluir a categoria &quot;{{ cat[1] }}&quot;?')">×</a>
+                       onclick="return confirm('Tem certeza que deseja excluir a categoria &quot;{{ categoria[1] }}&quot;?')">×</a>
                 </div>
             {% endfor %}
         </div>
@@ -354,7 +178,7 @@
 
             <div style="margin-top: 10px; clear: both;">
                 <strong>{{ n[1] }}</strong>
-                <span style="font-size: 0.7em; background: #eee; padding: 2px 5px; border-radius: 3px; margin-left: 10px;"> {{ n[3] }} </span>
+                <span class="nota-badge-categoria"> {{ n[3] }} </span>
             </div>
             
             <p style="margin: 10px 0;">{{ n[2] }}</p>

@@ -3,15 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <title>Editar Nota</title>
-    <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; color: #333; }
-        .form-container { background: white; padding: 20px; border-radius: 8px; max-width: 500px; margin: 0 auto; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        input, select, textarea { width: 100%; margin: 8px 0; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
-        .btn-salvar { background: #007bff; color: white; border: none; padding: 12px; width: 100%; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        .btn-cancelar { display: block; text-align: center; margin-top: 10px; color: #666; text-decoration: none; font-size: 0.9em; }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+
+    <button class="btn-dark-toggle" id="darkToggle">🌙 Modo Escuro</button>
+
+    <script>
+        // 1. CAPTURA DO ELEMENTO
+        // O 'document.getElementById' vai até o HTML e localiza o botão que criamos acima usando o ID "darkToggle".
+        // O 'const' cria uma variável (um contêiner) imutável para guardar essa referência.
+        const darkToggle = document.getElementById('darkToggle');
+        
+        // 2. VERIFICAÇÃO DE PREFERÊNCIA SALVA (PERSISTÊNCIA)
+        // O 'localStorage' é uma pequena memória que o navegador disponibiliza para o seu site.
+        // Aqui perguntamos: "O usuário já tinha deixado o tema como 'dark' antes?"
+        if (localStorage.getItem('theme') === 'dark') {
+            
+            // Se sim, vamos na tag <body> da página (document.body) e adicionamos (.classList.add) a classe 'dark-mode'.
+            // Isso faz com que o CSS que explicamos lá em cima entre em ação imediatamente.
+            document.body.classList.add('dark-mode');
+            
+            // Mudamos o texto escrito dentro do botão (.innerText) para sugerir a volta ao modo claro.
+            darkToggle.innerText = '☀️ Modo Claro';
+        }
+
+        // 3. OUVIDO DE EVENTOS (EVENT LISTENER)
+        // Aqui dizemos ao botão: "Fique escutando/esperando o usuário fazer uma ação".
+        // O primeiro argumento é 'click' (a ação) e o segundo é a função (o que fazer quando clicar).
+        // O símbolo '()' seguido por '=>' é chamado de Arrow Function (uma forma moderna de escrever funções em JS).
+        darkToggle.addEventListener('click', () => {
+            
+            // O '.toggle' é fantástico! Ele funciona como um interruptor de lâmpada:
+            // Se a classe 'dark-mode' NÃO existir no <body>, ele a ADICIONA.
+            // Se a classe 'dark-mode' JÁ EXISTIR no <body>, ele a REMOVE.
+            document.body.classList.toggle('dark-mode');
+            
+            // 4. ATUALIZAÇÃO DO STATUS E DA MEMÓRIA
+            // Agora fazemos um teste usando um 'if' (se) para saber o estado atual após o clique:
+            // O '.contains' verifica: "A tag body está com a classe 'dark-mode' ativa agora?"
+            if (document.body.classList.contains('dark-mode')) {
+                
+                // Se estiver ativa, salvamos no localStorage a chave 'theme' com o valor 'dark'.
+                // Assim, quando o usuário mudar de página ou recarregar, o site lembrará dessa escolha.
+                localStorage.setItem('theme', 'dark');
+                
+                // Mudamos o texto do botão para o Sol.
+                darkToggle.innerText = '☀️ Modo Claro';
+                
+            } else {
+                // Caso contrário (se o usuário acabou de desativar o modo escuro):
+                
+                // Atualizamos a memória do navegador dizendo que o tema agora é 'light' (claro).
+                localStorage.setItem('theme', 'light');
+                
+                // Mudamos o texto do botão de volta para a Lua.
+                darkToggle.innerText = '🌙 Modo Escuro';
+            }
+        });
+    </script>
+
+
     <div class="form-container">
         <h2>✏️ Editar Anotação</h2>
         <form method="POST">

@@ -1,0 +1,530 @@
+/* ==========================================
+   1. ESTILOS GLOBAIS E BASE
+   ========================================== */
+body { 
+    font-family: 'Segoe UI', sans-serif; 
+    background: #f0f2f5; 
+    padding: 20px; 
+    color: #333; 
+}
+
+hr {
+    border: 0;
+    border-top: 1px solid #ddd;
+    margin: 20px 0;
+}
+
+.container { 
+    max-width: 800px; 
+    margin: 0 auto; 
+}
+
+.text-center {
+    text-align: center;
+}
+
+.subtitulo-muted {
+    color: #666;
+}
+
+.margin-top-large {
+    margin-top: 40px;
+}
+
+/* ==========================================
+   2. FORMULÁRIOS E CAMPOS DE ENTRADA
+   ========================================== */
+.form-container { 
+    background: white; 
+    padding: 20px; 
+    border-radius: 8px; 
+    max-width: 500px; 
+    margin: 0 auto 30px auto; 
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+}
+
+/* Container tracejado de adicionar categoria */
+.form-container-categoria {
+    margin-top: 10px; 
+    background: #fdfdfd; 
+    border: 1px dashed #ccc;
+}
+
+/* Alinhamento flexível para os campos de categoria */
+.form-linha-dupla {
+    display: flex; 
+    gap: 10px; 
+    align-items: center;
+}
+
+input, select, textarea { 
+    width: 100%; 
+    margin: 8px 0; 
+    padding: 10px; 
+    border: 1px solid #ddd; 
+    border-radius: 4px; 
+    box-sizing: border-box; 
+}
+
+button { 
+    background: #28a745; 
+    color: white; 
+    border: none; 
+    padding: 12px; 
+    width: 100%; 
+    border-radius: 4px; 
+    cursor: pointer; 
+    font-weight: bold;
+}
+
+/* Label auxiliar para datas */
+.label-auxiliar {
+    font-size: 0.8em; 
+    color: #666;
+}
+
+/* ==========================================
+   3. DASHBOARD (CARD DE RESUMOS)
+   ========================================== */
+.dashboard {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.card-resumo {
+    background: white;
+    padding: 15px 25px;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    text-align: center;
+    min-width: 120px;
+}
+
+.card-resumo h3 {
+    margin: 0;
+    font-size: 1.8em;
+    font-weight: bold;
+}
+
+.card-resumo p {
+    margin: 5px 0 0 0;
+    color: #666;
+}
+
+/* Bordas coloridas do Dashboard */
+.card-resumo.vencidas { border-bottom: 4px solid #ff4d4d; }
+.card-resumo.alertas { border-bottom: 4px solid #ffcc00; }
+.card-resumo.concluidas { border-bottom: 4px solid #28a745; }
+
+.text-vermelho { color: #d9534f; }
+.text-amarelo { color: #f0ad4e; }
+.text-azul { color: #0275d8; }
+
+/* ==========================================
+   4. SISTEMA DE GRADE E CARDS DE NOTAS
+   ========================================== */
+.notas-container {
+    max-width: 800px;
+    margin: 0 auto;
+    display: grid; 
+    grid-template-columns: 1fr 1fr; 
+    gap: 20px; 
+}
+
+@media (max-width: 600px) {
+    .notas-container { grid-template-columns: 1fr; }
+}
+
+.nota-card { 
+    background: white; 
+    padding: 15px; 
+    border-left: 8px solid #ccc; 
+    border-radius: 8px; 
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+    transition: transform 0.2s; 
+}
+
+.nota-card:hover {
+    transform: translateY(-5px); 
+}
+
+/* Variação para notas já concluídas no histórico */
+.nota-card.concluida-estilo {
+    border-left: 5px solid #28a745; 
+    margin-bottom: 15px;
+}
+
+/* Cores de prioridade */
+.nota-card.Alta { border-left-color: #d9534f; }   
+.nota-card.Média { border-left-color: #f0ad4e; }  
+.nota-card.Baixa { border-left-color: #5cb85c; }  
+
+/* Elementos internos do Card */
+.nota-card-header {
+    margin-top: 10px; 
+    clear: both;
+}
+
+.nota-badge-categoria {
+    font-size: 0.7em; 
+    background: #eee; 
+    padding: 2px 5px; 
+    border-radius: 3px; 
+    margin-left: 10px;
+}
+
+.nota-badge-historico {
+    color: #666; 
+    background: #eee; 
+    padding: 2px 6px; 
+    border-radius: 3px;
+}
+
+.nota-conteudo {
+    margin: 10px 0;
+}
+
+.nota-conteudo-historico {
+    margin: 8px 0; 
+    color: #444;
+}
+
+.nota-metadados {
+    font-size: 0.8em; 
+    color: #888;
+}
+
+.container-links-historico {
+    margin-bottom: 12px;
+}
+
+/* ==========================================
+   5. ALERTAS DE VENCIMENTO
+   ========================================== */
+.alerta-vencimento, .alerta-vencido {
+    padding: 5px;
+    border-radius: 4px;
+    font-size: 0.8em;
+    margin-bottom: 10px;
+    font-weight: bold;
+    text-align: center;
+    display: block; 
+    margin-right: 180px; 
+    position: relative; 
+    z-index: 1; 
+    clear: none; 
+}
+
+.alerta-vencimento {
+    background: #fff3cd; 
+    color: #856404;      
+    border: 1px solid #ffeeba;
+    animation: piscar 2s infinite; 
+}
+
+.alerta-vencido {
+    background: #f8d7da; 
+    color: #721c24;      
+    border: 1px solid #f5c6cb;
+}
+
+@keyframes piscar {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+/* ==========================================
+   6. BOTÕES E LINKS DE AÇÃO
+   ========================================== */
+.btn-concluir, .btn-editar {
+    float: right; 
+    background-color: #f8f9fa;
+    padding: 5px 10px;
+    border-radius: 4px;
+    text-decoration: none; 
+    font-size: 0.8em;
+    font-weight: bold;
+    position: relative;
+    z-index: 10; 
+}
+
+.btn-concluir {
+    color: #28a745;
+    border: 1px solid #28a745;
+}
+
+.btn-concluir:hover {
+    background-color: #28a745;
+    color: white;
+}
+
+.btn-editar {
+    margin-right: 10px;
+    color: #007bff;
+    border: 1px solid #007bff;
+}
+
+.btn-editar:hover {
+    background-color: #007bff;
+    color: white;
+}
+
+.btn-salvar { 
+    background: #007bff; 
+    color: white; 
+    border: none; 
+    padding: 12px; 
+    width: 100%; 
+    border-radius: 4px; 
+    cursor: pointer; 
+    font-weight: bold; 
+}
+
+.btn-cancelar { 
+    display: block; 
+    text-align: center; 
+    margin-top: 10px; 
+    color: #666; 
+    text-decoration: none; 
+    font-size: 0.9em; 
+}
+
+.btn-voltar { 
+    display: inline-block; 
+    padding: 10px 20px; 
+    background: #6c757d; 
+    color: white; 
+    text-decoration: none; 
+    border-radius: 5px; 
+    margin-bottom: 20px; 
+}
+
+.btn-voltar:hover { 
+    background: #5a6268; 
+}
+
+.btn-restaurar {
+    text-decoration: none; 
+    background: #007bff; 
+    color: white; 
+    padding: 6px 12px; 
+    border-radius: 4px; 
+    font-size: 0.85em; 
+    font-weight: bold; 
+    display: inline-block; 
+    transition: background 0.2s;
+}
+
+.btn-restaurar:hover {
+    background: #0056b3;
+}
+
+/* Link simples de histórico */
+.link-historico-secundario {
+    color: #666; 
+    font-size: 0.9em;
+}
+
+/* ==========================================
+   7. FILTROS E PESQUISA (BUSCA)
+   ========================================== */
+.filtros-container {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.btn-filtro {
+    padding: 8px 16px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    text-decoration: none;
+    color: #555;
+    font-size: 0.9em;
+    transition: all 0.3s;
+}
+
+.btn-filtro:hover {
+    background: #e9ecef;
+}
+
+.btn-filtro.active {
+    background: #007bff;
+    color: white;
+    border-color: #007bff;
+    box-shadow: 0 2px 5px rgba(0,123,255,0.3);
+}
+
+.busca-container {
+    max-width: 500px;
+    margin: 0 auto 20px auto;
+}
+
+#inputBusca {
+    width: 100%;
+    padding: 12px 20px;
+    border: 2px solid #ddd;
+    border-radius: 25px;
+    font-size: 1em;
+    outline: none;
+    transition: border-color 0.3s;
+}
+
+#inputBusca:focus {
+    border-color: #007bff;
+}
+
+
+/* ==========================================================================
+   8. MODO ESCURO (DARK MODE) - APRENDIZADO PASSO A PASSO
+   ========================================================================== */
+
+/* O seletor "body.dark-mode" diz ao navegador: 
+  "Aplique estes estilos na tag <body> APENAS se ela tiver a classe chamada 'dark-mode'".
+  O uso do "!important" é um recurso do CSS para garantir que essa cor FORCE a substituição 
+  de qualquer outra cor de fundo que tenha sido definida antes no arquivo.
+*/
+body.dark-mode {
+    background: #121212 !important; /* Altera a cor de fundo geral da página para um cinza quase preto */
+    color: #f5f5f5 !important;      /* Altera a cor dos textos principais para um branco fosco (confortável aos olhos) */
+}
+
+/*
+  Aqui estamos agrupando vários seletores separados por vírgula. 
+  Isso significa: "Aplique a regra abaixo em todos esses elementos de uma vez só, 
+  desde que a página esteja com o 'body.dark-mode' ativo".
+*/
+body.dark-mode .form-container,
+body.dark-mode .nota-card,
+body.dark-mode .busca-container input,
+body.dark-mode input,
+body.dark-mode textarea,
+body.dark-mode select {
+    background: #1e1e1e !important; /* Transforma o fundo dos blocos e inputs em um cinza um pouco mais claro que o fundo geral */
+    color: #f5f5f5 !important;      /* Garante que o texto digitado dentro das caixas fique branco */
+    border-color: #333 !important;  /* Altera a borda dos campos para um cinza escuro, tirando aquela borda branca chamativa */
+}
+
+/*
+   Criamos uma regra exclusiva para eles. Mudamos o fundo e o texto, mas NÃO tocamos 
+   nas bordas, permitindo que o vermelho, amarelo e verde do HTML continuem brilhando!
+*/
+body.dark-mode .card-resumo {
+    background: #1e1e1e !important; /* Deixa o fundo dos cards do dashboard escuro, mantendo a consistência visual */
+    color: #f5f5f5 !important;      /* Garante que os textos dentro dos cards fiquem claros */
+}
+
+/*
+   Lembra da classe "categoria-badge" que colocamos no HTML? 
+   Aqui dizemos: quando o modo escuro estiver ativo, mude o fundo cinza-claro para um cinza escuro,
+   garantindo o contraste perfeito com a letra branca.
+*/
+body.dark-mode .categoria-badge {
+    background: #2d2d2d !important; /* Inverte o fundo de cinza-claro para escuro */
+    border-color: #555 !important;   /* Deixa a borda um pouco mais clara que o fundo para destacar a pílula */
+    color: #ffffff !important;   /* 🌟 Força o texto da pílula a ficar branco */
+}
+
+/* Garante que o texto de dentro do <span> também fique 100% branco */
+body.dark-mode .categoria-badge span {
+    color: #ffffff !important;
+}
+
+/* Garante que o link de excluir (x) a categoria continue visível e vermelho no modo escuro */
+body.dark-mode .categoria-badge a {
+    color: #ff6b6b !important;
+}
+
+/* Garante que a tag de categoria dentro do card de notas fique escura com texto branco */
+body.dark-mode .nota-badge-categoria {
+    background: #2d2d2d !important; /* Fundo cinza escuro */
+    color: #ffffff !important;      /* Letra totalmente branca */
+    border: 1px solid #555 !important; /* Bordinha sutil para dar acabamento */
+}
+
+/*
+  O "::placeholder" é um pseudo-elemento. Ele serve para estilizar especificamente
+  aquele texto explicativo cinza que fica dentro do campo antes de você digitar algo 
+  (ex: "Escreva os detalhes aqui...").
+*/
+body.dark-mode input::placeholder,
+body.dark-mode textarea::placeholder {
+    color: #777 !important; /* Deixa o texto de ajuda do placeholder em um cinza bem apagado */
+}
+
+/* Estiliza as linhas horizontais de divisão (<hr>) no modo escuro */
+body.dark-mode hr {
+    border-top: 1px solid #333 !important; /* Substitui a linha divisória clara por uma linha escura e sutil */
+}
+
+/* Modifica o visual dos botões de filtro de categoria */
+body.dark-mode .btn-filtro {
+    background: #2d2d2d !important; /* Fundo cinza escuro para os filtros desativados */
+    color: #f5f5f5 !important;      /* Texto claro */
+    border-color: #444 !important;  /* Borda sutil */
+}
+
+/* Estiliza especificamente o botão de filtro que estiver ATIVO (selecionado) */
+body.dark-mode .btn-filtro.active {
+    background: #007bff !important; /* Mantém o azul padrão de destaque para o filtro ativo */
+    color: #ffffff !important;      /* Texto totalmente branco */
+}
+
+/* Ajusta o texto de descrição/conteúdo da sua nota */
+body.dark-mode .nota-conteudo {
+    color: #dddddd !important; /* Um branco levemente acinzentado para dar hierarquia visual ao título */
+}
+
+/* Ajusta os metadados (ex: "Prioridade: Média | Prazo: ..."), parágrafos e textos auxiliares.
+  Em design de interfaces, textos menos importantes devem ser mais escuros/apagados no modo escuro.
+*/
+body.dark-mode .nota-metadados,
+body.dark-mode .label-auxiliar,
+body.dark-mode p,
+body.dark-mode small {
+    color: #b0b0b0 !important; /* Um cinza médio para textos secundários */
+}
+
+/* Ajusta as pequenas tags/badges (como a data de vencimento nas concluídas) */
+body.dark-mode small {
+    background: #2d2d2d !important; /* Dá um fundo cinza de destaque para o texto pequeno */
+}
+
+
+/* ==========================================================================
+   BOTÃO FLUTUANTE DO MODO ESCURO
+   ========================================================================== */
+.btn-dark-toggle {
+    position: fixed;            /* "fixed" faz o botão ficar fixo na tela, ele não se move mesmo que você role a página */
+    bottom: 20px;               /* Distância de 20 pixels da parte inferior da tela */
+    right: 20px;                /* Distância de 20 pixels da lateral direita da tela */
+    width: auto !important;     /* Largura do botão */
+    background: #222;           /* Cor de fundo do botão no modo claro (fundo escuro com texto claro) */
+    color: #fff;                /* Cor do texto/emoji dentro do botão */
+    border: 2px solid #444;     /* Borda do botão */
+    padding: 10px 10px;         /* Espaçamento interno: 12px vertical e 16px horizontal (deixa o botão gordinho) */
+    border-radius: 50px;        /* Deixa as bordas totalmente arredondadas (estilo pílula) */
+    cursor: pointer;            /* Faz o ponteiro do mouse virar a "mãozinha" de clique ao passar por cima */
+    font-size: 0.9em;             /* Tamanho padrão da fonte */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4); /* Cria uma sombra preta suave atrás do botão para parecer que ele flutua */
+    z-index: 9999;              /* "z-index" controla as camadas da tela. 9999 garante que ele fique no TOPO de qualquer elemento */
+    transition: all 0.2s ease;  /* Diz ao navegador para animar suavemente (durante 0.2 segundos) qualquer mudança visual */
+}
+
+/* O ":hover" é um estado do CSS que ativa quando o usuário passa o mouse por cima do elemento */
+.btn-dark-toggle:hover {
+    transform: scale(1.05);     /* Efeito de animação: aumenta levemente o tamanho do botão em 5% ao passar o mouse */
+}
+
+/* Define como o próprio botão flutuante deve se comportar visualmente quando o modo escuro ESTIVER ativo */
+body.dark-mode .btn-dark-toggle {
+    background: #fff;           /* Inverte: o fundo do botão fica branco no modo escuro */
+    color: #222;                /* O texto do botão fica escuro */
+    border-color: #ccc;         /* A borda fica cinza clara */
+}
