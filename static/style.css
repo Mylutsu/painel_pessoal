@@ -157,9 +157,9 @@ button {
 }
 
 /* Cores de prioridade */
-.nota-card.Alta { border-left-color: #d9534f; }   
-.nota-card.Média { border-left-color: #f0ad4e; }  
-.nota-card.Baixa { border-left-color: #5cb85c; }  
+.nota-card.Alta { border-left-color: #d9534f; }
+.nota-card.Média { border-left-color: #f0ad4e; }
+.nota-card.Baixa { border-left-color: #5cb85c; }
 
 /* Elementos internos do Card */
 .nota-card-header {
@@ -207,7 +207,7 @@ button {
     padding: 8px;
     border-radius: 4px;
     font-size: 0.85em;
-    margin-top: 35px;
+    margin-top: 10px;
     margin-bottom: 10px;
     font-weight: bold;
     text-align: center;
@@ -244,7 +244,8 @@ button {
     float: right; 
     background-color: #f8f9fa;
     padding: 5px 10px;
-    border-radius: 4px;
+    margin-bottom: 10px;
+    border-radius: 15px;
     text-decoration: none; 
     font-size: 0.8em;
     font-weight: bold;
@@ -413,8 +414,8 @@ body.dark-mode {
   desde que a página esteja com o 'body.dark-mode' ativo".
 */
 body.dark-mode .form-container,
-body.dark-mode .nota-card,
 body.dark-mode .busca-container input,
+body.dark-mode .nota-card,
 body.dark-mode input,
 body.dark-mode textarea,
 body.dark-mode select {
@@ -430,6 +431,27 @@ body.dark-mode select {
 body.dark-mode .card-resumo {
     background: #1e1e1e !important; /* Deixa o fundo dos cards do dashboard escuro, mantendo a consistência visual */
     color: #f5f5f5 !important;      /* Garante que os textos dentro dos cards fiquem claros */
+}
+
+/* 🔴 Prioridade Alta no Modo Escuro */
+body.dark-mode .nota-card.Alta {
+    background: #2c2c2c !important; /* Mantém o fundo padrão escuro puro */
+    border: 1px solid #444;        /* Borda padrão discreta */
+    border-left: 6px solid #d9534f !important; /* Apenas o charme da linha vermelha */
+}
+
+/* 🟡 Prioridade Média no Modo Escuro */
+body.dark-mode .nota-card.Média {
+    background: #2c2c2c !important; /* Mantém o fundo padrão escuro puro */
+    border: 1px solid #444;        /* Borda padrão discreta */
+    border-left: 6px solid #f0ad4e !important; /* Apenas o charme da linha amarela */
+}
+
+/* 🟢 Prioridade Baixa no Modo Escuro */
+body.dark-mode .nota-card.Baixa {
+    background: #2c2c2c !important; /* Mantém o fundo padrão escuro puro */
+    border: 1px solid #444;        /* Borda padrão discreta */
+    border-left: 6px solid #5cb85c !important; /* Apenas o charme da linha verde */
 }
 
 /*

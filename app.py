@@ -2,7 +2,7 @@
 # request: captura o que o usuário digita no formulário
 # redirect/url_for: fazem o navegador pular de uma página para outra
 from flask import Flask, render_template, request, redirect, url_for
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import sqlite3
 
 app = Flask(__name__)
@@ -12,9 +12,25 @@ app = Flask(__name__)
 def conectar_banco():
     return sqlite3.connect('painel_dados.db')
 
+#FUNÇÃO DE LIMPEZA AUTOMATICA DE NOTAS EXCLUÍDAS
+def limpar_lixeira_automatica(dias_limite=30): #alterar o dias_limite de acordo com a necessidade de duração das notas
+    conn = conectar_banco()
+    cursor = conn.cursor()
+    
+    # Calcula a data limite para exclusão (hoje - dias_limite)
+    data_corte = (datetime.now() - timedelta(days=dias_limite)).strftime('%Y-%m-%d')
+    
+    # Deleta as notas que estão na lixeira e foram excluídas antes da data limite
+    cursor.execute("DELETE FROM notas WHERE status = 'lixeira' AND data_exclusao <= ?", (data_corte,))
+    
+    conn.commit()
+    conn.close()
+
 # --- ROTA PRINCIPAL (MOSTRAR OS DADOS) ---
 @app.route('/')
 def index():
+    limpar_lixeira_automatica() # Chama a função de limpeza toda vez que a página inicial for acessada
+
     conn = conectar_banco()
     cursor = conn.cursor()
 
