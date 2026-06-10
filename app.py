@@ -247,5 +247,93 @@ def concluidas():
     
     return render_template('concluidas.html', notas=notas_processadas)
 
+
+###########################################
+############## ROTAS LIXEIRA ##############
+###########################################
+
+# 1. ROTA PARA EXIBIR A PÁGINA DA LIXEIRA
+@app.route('/lixeira')
+def lixeira():
+    conn = conectar_banco()
+    cursor = conn.cursor()
+    
+    # Busca apenas as notas com status 'lixeira'
+    cursor.execute("SELECT * FROM notas WHERE status = 'lixeira' ORDER BY data_exclusao DESC")
+    notas = cursor.fetchall()
+
+    notas_processadas = []
+    for n in notas:
+        n_lista = list(n)
+        # Formata a data de vencimento se houver
+        if n[7]:
+            data_v = datetime.strptime(n[7], '%Y-%m-%d').date()
+            n_lista[7] = data_v.strftime('%d/%m/%Y')
+        # Formata a data de exclusão (que agora é o índice 10 do banco)
+        if n[10]:
+            data_ex = datetime.strptime(n[10], '%Y-%m-%d').date()
+            n_lista[10] = data_ex.strftime('%d/%m/%Y')
+            
+        notas_processadas.append(n_lista)
+
+    conn.close()
+    return render_template('lixeira.html', notas=notas_processadas)
+
+# 2. ROTA PARA RESTAURAR DA LIXEIRA DE VOLTA PARA O PAINEL
+@app.route('/restaurar_lixeira/<int:id>')
+def restaurar_lixeira(id):
+    conn = conectar_banco()
+    cursor = conn.cursor()
+    
+    # Volta o status para 'Ativo' e limpa a data de exclusão
+    cursor.execute("UPDATE notas SET status = 'Ativo', data_exclusao = NULL WHERE id = ?", (id,))
+    
+    conn.commit()
+    conn.close()
+    return redirect(url_for('lixeira'))
+
+# 3. ROTA PARA MANDAR PARA A LIXEIRA
+@app.route('/deletar_lixeira/<int:id>')
+def deletar_lixeira(id):
+    conn = conectar_banco()
+    cursor = conn.cursor()
+
+    data_hoje = datetime.now().strftime('%Y-%m-%d')
+    
+    # Ajuste o nome da coluna de status e data se forem diferentes no seu banco
+    cursor.execute("UPDATE notas SET status = 'lixeira', data_exclusao = ? WHERE id = ?", (data_hoje, id))
+    
+    conn.commit()
+    conn.close()
+    return redirect(url_for('index'))
+
+# 4. ROTA PARA EXCLUSÃO DEFINITIVA (EVAPORAR DO BANCO)
+@app.route('/excluir_definitivo/<int:id>')
+def excluir_definitivo(id):
+    conn = conectar_banco()
+    cursor = conn.cursor()
+    
+    # Remove completamente a nota do banco
+    cursor.execute("DELETE FROM notas WHERE id = ?", (id,))
+    
+    conn.commit()
+    conn.close()
+    return redirect(url_for('lixeira'))
+
+
+# 5. ROTA PARA ESVAZIAR TODA A LIXEIRA DE UMA VEZ
+@app.route('/esvaziar_lixeira')
+def esvaziar_lixeira():
+    conn = conectar_banco()
+    cursor = conn.cursor()
+    
+    # Remove todas as notas que estão na lixeira
+    cursor.execute("DELETE FROM notas WHERE status = 'lixeira'")
+    
+    conn.commit()
+    conn.close()
+    return redirect(url_for('lixeira'))
+
+
 if __name__ == "__main__":
     app.run(debug=True)

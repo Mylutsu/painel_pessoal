@@ -146,8 +146,10 @@
         <input type="text" id="inputBusca" placeholder="🔍 Pesquisar pelo título..." onkeyup="filtrarBusca()">
     </div>
 
-    <div style="text-align: center; margin-top: 10px;">
-        <a href="/concluidas" style="color: #666; font-size: 0.9em;">📂 Ver Histórico de Concluídas</a>
+    <div style="text-align: center; margin-top: 15px; display: flex; justify-content: center; gap: 20px;">
+        <a href="/concluidas" style="color: #666; font-size: 0.9em; text-decoration: none; font-weight: 500;">📂 Ver Histórico de Concluídas</a>
+        <span style="color: #ccc;">|</span>
+        <a href="/lixeira" style="color: #666; font-size: 0.9em; text-decoration: none; font-weight: 500;">🗑️ Ver Lixeira</a>
     </div>
 
     <div class="filtros-container">
@@ -165,6 +167,8 @@
             <a href="/concluir/{{ n[0] }}" class="btn-concluir">✅ Concluir</a>
 
             <a href="/editar/{{ n[0] }}" class="btn-editar">✏️ Editar</a>
+
+            <a href="/deletar_lixeira/{{ n[0] }}" class="btn-excluir" onclick="return confirm('Mandar esta nota para a lixeira?')">🗑️ Excluir</a>
 
             {% if n[-1] == "vencido" %}
                 <div class="alerta-vencido">

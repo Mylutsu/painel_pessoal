@@ -204,17 +204,18 @@ button {
    5. ALERTAS DE VENCIMENTO
    ========================================== */
 .alerta-vencimento, .alerta-vencido {
-    padding: 5px;
+    padding: 8px;
     border-radius: 4px;
-    font-size: 0.8em;
+    font-size: 0.85em;
+    margin-top: 35px;
     margin-bottom: 10px;
     font-weight: bold;
     text-align: center;
-    display: block; 
-    margin-right: 180px; 
+    display: block;
     position: relative; 
     z-index: 1; 
-    clear: none; 
+    clear: both;
+    box-sizing: border-box;
 }
 
 .alerta-vencimento {
@@ -239,7 +240,7 @@ button {
 /* ==========================================
    6. BOTÕES E LINKS DE AÇÃO
    ========================================== */
-.btn-concluir, .btn-editar {
+.btn-concluir, .btn-editar, .btn-excluir {
     float: right; 
     background-color: #f8f9fa;
     padding: 5px 10px;
@@ -269,6 +270,17 @@ button {
 
 .btn-editar:hover {
     background-color: #007bff;
+    color: white;
+}
+
+.btn-excluir {
+    margin-right: 10px;
+    color: #dc3545;
+    border: 1px solid #dc3545;
+}
+
+.btn-excluir:hover {
+    background-color: #dc3545;
     color: white;
 }
 
@@ -494,6 +506,13 @@ body.dark-mode small {
 /* Ajusta as pequenas tags/badges (como a data de vencimento nas concluídas) */
 body.dark-mode small {
     background: #2d2d2d !important; /* Dá um fundo cinza de destaque para o texto pequeno */
+}
+
+/* Garante que TODOS os três botões de ação se adaptem nativamente ao Modo Escuro */
+body.dark-mode .btn-concluir,
+body.dark-mode .btn-editar,
+body.dark-mode .btn-excluir {
+    background: #1e1e1e !important;
 }
 
 

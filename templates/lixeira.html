@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Lixeira - Painel Pessoal</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <button class="btn-dark-toggle" id="darkToggle">🌙 Modo Escuro</button>
+
+    <div class="container">
+        <a href="/" class="btn-voltar">⬅️ Voltar ao Painel</a>
+        
+        <h2 class="text-center">🗑️ Lixeira do Sistema</h2>
+        <p class="text-center subtitulo-muted">As notas abaixo foram removidas. Você pode restaurá-las ou apagá-las permanentemente.</p>
+
+        {% if notas %}
+            <div style="text-align: center; margin-bottom: 20px;">
+                <a href="/esvaziar_lixeira" class="btn-concluir" style="float: none; display: inline-block; color: #dc3545; border-color: #dc3545;" 
+                   onclick="return confirm('Tem certeza absoluta que deseja APAGAR TUDO permanentemente? Esta ação não pode ser desfeita.')">
+                    💥 Esvaziar Lixeira
+                </a>
+            </div>
+        {% endif %}
+
+        <div class="notas-container" style="grid-template-columns: 1fr;">
+            {% for n in notas %}
+            <div class="nota-card" style="border-left: 5px solid #6c757d;">
+                <div style="float: right; display: flex; gap: 8px;">
+                    <a href="/restaurar_lixeira/{{ n[0] }}" class="btn-concluir" style="float: none;">
+                        🔄 Restaurar
+                    </a>
+                    <a href="/excluir_definitivo/{{ n[0] }}" class="btn-editar" style="float: none; color: #dc3545; border-color: #dc3545;"
+                       onclick="return confirm('Apagar definitivamente esta nota? Essa ação é irreversível.')">
+                        ❌ Excluir Definitivo
+                    </a>
+                </div>
+
+                <div>
+                    <strong>{{ n[1] }}</strong>
+                    <span class="nota-badge-categoria">{{ n[3] }}</span>
+                    <p style="margin: 10px 0;">{{ n[2] }}</p>
+                    
+                    <div style="font-size: 0.8em; color: #888;">
+                        Excluído em: {{ n[10] }} {% if n[7] %}| Prazo original: {{ n[7] }}{% endif %}
+                    </div>
+                </div>
+            </div>
+            {% else %}
+                <p class="text-center subtitulo-muted" style="grid-column: 1/-1; margin-top: 30px;">A lixeira está vazia. Tudo limpo por aqui! ✨</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <script>
+        const darkToggle = document.getElementById('darkToggle');
+        if (localStorage.getItem('theme') === 'dark') {
+            document.body.classList.add('dark-mode');
+            darkToggle.innerText = '☀️ Modo Claro';
+        }
+        darkToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            if (document.body.classList.contains('dark-mode')) {
+                localStorage.setItem('theme', 'dark');
+                darkToggle.innerText = '☀️ Modo Claro';
+            } else {
+                localStorage.setItem('theme', 'light');
+                darkToggle.innerText = '🌙 Modo Escuro';
+            }
+        });
+    </script>
+</body>
+</html>

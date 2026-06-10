@@ -23,7 +23,8 @@ def criar_estrutura():
             data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             data_vencimento DATE, -- Para os lembretes de conta
             dias_aviso INTEGER, -- Quantos dias antes avisar
-            status TEXT DEFAULT 'Ativo' -- Ex: Ativo ou Concluído
+            status TEXT DEFAULT 'Ativo', -- Ex: Ativo ou Concluído
+            data_exclusao DATE -- Dia que uma nota foi excluída
         )
     ''')
 
