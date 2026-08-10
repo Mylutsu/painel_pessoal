@@ -188,7 +188,7 @@
                                     <h3 class="priority-title">{{ prio_icon }} Prioridade {{ prio_nome }}</h3>
                                     <div class="notas-grid">
                                         {% for nota in ns.notas_prio %}
-                                            <div class="nota-card prioridade-{{ nota[4] | lower }} {{ nota[11] }}">
+                                            <div class="nota-card prioridade-{{ nota[4] | lower }} {{ nota[12] }}">
                                                 <div class="nota-header">
                                                     <span class="badge-cat">{{ nota[3] or 'Geral' }}</span>
                                                     <span class="badge-prio prio-{{ nota[4] | lower }}">{{ nota[4] }}</span>
@@ -201,13 +201,13 @@
                                                     <div class="checklist-container">
                                                         <div class="progress-info">
                                                             <div class="progress-bar-bg">
-                                                                <div class="progress-bar-fill" id="progress-bar-{{ nota[0] }}" style="width: {{ nota[13] }}%;"></div>
+                                                                <div class="progress-bar-fill" id="progress-bar-{{ nota[0] }}" style="width: {{ nota[14] }}%;"></div>
                                                             </div>
-                                                            <small id="progress-text-{{ nota[0] }}">{{ nota[15] }}/{{ nota[14] }} concluídos ({{ nota[13] }}%)</small>
+                                                            <small id="progress-text-{{ nota[0] }}">{{ nota[16] }}/{{ nota[15] }} concluídos ({{ nota[14] }}%)</small>
                                                         </div>
 
                                                         <ul class="checklist-items" id="checklist-items-{{ nota[0] }}">
-                                                            {% for item in nota[12] %}
+                                                            {% for item in nota[13] %}
                                                                 <li class="checklist-item {% if item[2] %}completed{% endif %}">
                                                                     <label>
                                                                         <input type="checkbox" {% if item[2] %}checked{% endif %} onchange="toggleItemChecklist({{ item[0] }}, {{ nota[0] }}, this)">

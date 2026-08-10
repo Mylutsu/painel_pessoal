@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastro - Painel de Notas</title>
+    <!-- Vinculo com o CSS do projeto -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .alert {
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+        .alert-danger { background-color: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+        .alert-success { background-color: #dcfce7; color: #166534; border: 1px solid #86efac; }
+        .alert-warning { background-color: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+        
+        .auth-footer {
+            text-align: center;
+            margin-top: 16px;
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+        .auth-footer a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .auth-footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+
+    <script>
+        if (localStorage.getItem('theme') === 'dark') {
+            document.documentElement.classList.add('dark-mode');
+        }
+    </script>
+</head>
+<body>
+    <div class="app-container edit-container">
+        
+        <!-- Bloco de Alertas e Mensagens Flash -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="card-form">
+            <div class="auth-header">
+                <h2 style="font-size: 22px; font-weight: 800; margin: 0;">📝 Criar Nova Conta</h2>
+                <button type="button" id="btnTheme" class="btn-theme" title="Alternar Tema">🌙</button>
+            </div>
+
+            <form action="{{ url_for('cadastro') }}" method="POST">
+                <div class="form-group">
+                    <label for="nome">Nome Completo</label>
+                    <input type="text" id="nome" name="nome" placeholder="Seu Nome" required autofocus>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">E-mail</label>
+                    <input type="email" id="email" name="email" placeholder="seu@email.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="senha">Senha</label>
+                    <input type="password" id="senha" name="senha" placeholder="••••••••" required>
+                </div>
+
+                <button type="submit" class="btn-principal" style="margin-top: 8px;">Cadastrar</button>
+            </form>
+
+            <div class="auth-footer">
+                Já possui uma conta? <a href="{{ url_for('login') }}">Faça login</a>
+            </div>
+        </div>
+
+    </div>
+
+
+    <script>
+        const btnTheme = document.getElementById('btnTheme');
+        
+        function atualizarTema() {
+            const isDark = localStorage.getItem('theme') === 'dark';
+            if (isDark) {
+                document.body.classList.add('dark-mode');
+                document.documentElement.classList.add('dark-mode');
+                btnTheme.textContent = '☀️';
+            } else {
+                document.body.classList.remove('dark-mode');
+                document.documentElement.classList.remove('dark-mode');
+                btnTheme.textContent = '🌙';
+            }
+        }
+
+        btnTheme.addEventListener('click', () => {
+            const isDark = document.body.classList.contains('dark-mode');
+            localStorage.setItem('theme', isDark ? 'light' : 'dark');
+            atualizarTema();
+        });
+
+        atualizarTema();
+    </script>
+</body>
+</html>

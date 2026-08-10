@@ -4,10 +4,10 @@ import smtplib
 from datetime import datetime, date, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-
-from flask import Flask, render_template, request, redirect, url_for, jsonify
+from flask import Flask, render_template, request, redirect, url_for, jsonify, flash, session
 from dotenv import load_dotenv
 from apscheduler.schedulers.background import BackgroundScheduler
+from werkzeug.security import generate_password_hash, check_password_hash
 
 # ==============================================================================
 # SEÇÃO 1: CONFIGURAÇÃO DA APLICAÇÃO E AMBIENTE
@@ -15,6 +15,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 load_dotenv()
 
 app = Flask(__name__)
+app.secret_key = 'teste_de_senha_super_secreta' # mude para uma chave aleatoria em produção
 
 # ==============================================================================
 # SEÇÃO 2: FUNÇÕES UTILITÁRIAS E MANIPULAÇÃO DE BANCO DE DADOS
@@ -77,10 +78,10 @@ def limpar_lixeira_automatica(dias_limite=30):
         conn.commit()
 
 # ==============================================================================
-# SEÇÃO 3: AGENDADOR DE TAREFAS E NOTIFICAÇÕES POR E-MAIL
+# SEÇÃO 3: AGENDADOR DE TAREFAS E NOTIFICAÇÕES POR E-MAIL (MULTI-USUÁRIO)
 # ==============================================================================
 def verificar_e_enviar_alertas():
-    """Consulta compromissos e envia resumo HTML com os prazos prestes a vencer."""
+    """Consulta compromissos de CADA usuário e envia e-mail personalizado com os alertas."""
     email_remetente = os.getenv("EMAIL_USUARIO")
     senha = os.getenv("EMAIL_SENHA")
 
@@ -90,111 +91,120 @@ def verificar_e_enviar_alertas():
 
     with conectar_banco() as conn:
         cursor = conn.cursor()
-        cursor.execute("""
-            SELECT titulo, data_vencimento, categoria 
-            FROM notas 
-            WHERE status = 'Ativo' AND data_vencimento IS NOT NULL AND data_vencimento != ''
-        """)
-        notas = cursor.fetchall()
+        # Busca todos os usuários cadastrados no sistema
+        cursor.execute("SELECT id, nome, email FROM usuarios")
+        usuarios = cursor.fetchall()
 
-    hoje = date.today()
-    itens_html = []
-    qtd_pendencias = 0
+        hoje = date.today()
 
-    for titulo, data_venc_str, categoria in notas:
-        try:
-            data_venc = datetime.strptime(data_venc_str, "%Y-%m-%d").date()
-            dias_restantes = (data_venc - hoje).days
-            cat_nome = categoria if categoria else "Geral"
+        for u_id, u_nome, u_email in usuarios:
+            cursor.execute("""
+                SELECT titulo, data_vencimento, categoria 
+                FROM notas 
+                WHERE status = 'Ativo' AND usuario_id = ? AND data_vencimento IS NOT NULL AND data_vencimento != ''
+            """, (u_id,))
+            notas = cursor.fetchall()
 
-            if dias_restantes < 0:
-                qtd_pendencias += 1
-                itens_html.append(f'''
-                    <div class="item-card vencida">
-                        <span class="badge badge-vencida">Vencida</span>
-                        <strong>{titulo}</strong> <span class="categoria">({cat_nome})</span><br>
-                        <small>Venceu há {abs(dias_restantes)} dia(s) — Data: {data_venc.strftime('%d/%m/%Y')}</small>
+            if not notas:
+                continue
+
+            itens_html = []
+            qtd_pendencias = 0
+
+            for titulo, data_venc_str, categoria in notas:
+                try:
+                    data_venc = datetime.strptime(data_venc_str, "%Y-%m-%d").date()
+                    dias_restantes = (data_venc - hoje).days
+                    cat_nome = categoria if categoria else "Geral"
+
+                    if dias_restantes < 0:
+                        qtd_pendencias += 1
+                        itens_html.append(f'''
+                            <div class="item-card vencida">
+                                <span class="badge badge-vencida">Vencida</span>
+                                <strong>{titulo}</strong> <span class="categoria">({cat_nome})</span><br>
+                                <small>Venceu há {abs(dias_restantes)} dia(s) — Data: {data_venc.strftime('%d/%m/%Y')}</small>
+                            </div>
+                        ''')
+                    elif dias_restantes == 0:
+                        qtd_pendencias += 1
+                        itens_html.append(f'''
+                            <div class="item-card hoje">
+                                <span class="badge badge-hoje">Vence Hoje</span>
+                                <strong>{titulo}</strong> <span class="categoria">({cat_nome})</span><br>
+                                <small>Atenção! O vencimento está agendado para hoje.</small>
+                            </div>
+                        ''')
+                    elif dias_restantes <= 2:
+                        qtd_pendencias += 1
+                        itens_html.append(f'''
+                            <div class="item-card alerta">
+                                <span class="badge badge-alerta">Em Breve</span>
+                                <strong>{titulo}</strong> <span class="categoria">({cat_nome})</span><br>
+                                <small>Vence em {dias_restantes} dia(s) — Data: {data_venc.strftime('%d/%m/%Y')}</small>
+                            </div>
+                        ''')
+                except ValueError:
+                    continue
+
+            if qtd_pendencias > 0:
+                msg = MIMEMultipart("alternative")
+                msg["From"] = email_remetente
+                msg["To"] = u_email  # Envia para o e-mail individual do usuário
+                msg["Subject"] = f"🔔 Alerta do Painel: {qtd_pendencias} conta(s)/tarefa(s) requerem atenção!"
+
+                conteudo_cards = "".join(itens_html)
+
+                corpo_html = f"""
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="utf-8">
+                    <style>
+                        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 20px; color: #1e293b; }}
+                        .container {{ max-width: 560px; background: #ffffff; margin: 0 auto; border-radius: 12px; padding: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; }}
+                        .header {{ border-bottom: 2px solid #f1f5f9; padding-bottom: 16px; margin-bottom: 20px; }}
+                        .header h2 {{ margin: 0; color: #0f172a; font-size: 20px; }}
+                        .header p {{ color: #64748b; font-size: 13px; margin: 6px 0 0 0; }}
+                        .item-card {{ border-radius: 8px; padding: 12px 16px; margin-bottom: 12px; font-size: 14px; line-height: 1.5; }}
+                        .categoria {{ opacity: 0.75; font-weight: normal; font-size: 13px; }}
+                        .vencida {{ background-color: #fef2f2; border-left: 5px solid #ef4444; color: #991b1b; }}
+                        .hoje {{ background-color: #fff7ed; border-left: 5px solid #ea580c; color: #9a3412; }}
+                        .alerta {{ background-color: #fffbeb; border-left: 5px solid #f59e0b; color: #92400e; }}
+                        .badge {{ display: inline-block; font-weight: 700; font-size: 10px; padding: 3px 8px; border-radius: 12px; margin-right: 6px; text-transform: uppercase; letter-spacing: 0.5px; color: #ffffff; }}
+                        .badge-vencida {{ background-color: #ef4444; }}
+                        .badge-hoje {{ background-color: #ea580c; }}
+                        .badge-alerta {{ background-color: #f59e0b; }}
+                        .footer {{ margin-top: 28px; text-align: center; border-top: 1px solid #f1f5f9; padding-top: 20px; }}
+                        .btn {{ display: inline-block; background-color: #2563eb; color: #ffffff !important; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; }}
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <h2>Olá, {u_nome}! 🔔</h2>
+                            <p>Abaixo estão os seus compromissos que precisam de atenção hoje:</p>
+                        </div>
+                        <div class="content">{conteudo_cards}</div>
+                        <div class="footer">
+                            <a href="http://127.0.0.1:5000" class="btn">Abrir Meu Painel de Notas</a>
+                        </div>
                     </div>
-                ''')
-            elif dias_restantes == 0:
-                qtd_pendencias += 1
-                itens_html.append(f'''
-                    <div class="item-card hoje">
-                        <span class="badge badge-hoje">Vence Hoje</span>
-                        <strong>{titulo}</strong> <span class="categoria">({cat_nome})</span><br>
-                        <small>Atenção! O vencimento está agendado para hoje.</small>
-                    </div>
-                ''')
-            elif dias_restantes <= 2:
-                qtd_pendencias += 1
-                itens_html.append(f'''
-                    <div class="item-card alerta">
-                        <span class="badge badge-alerta">Em Breve</span>
-                        <strong>{titulo}</strong> <span class="categoria">({cat_nome})</span><br>
-                        <small>Vence em {dias_restantes} dia(s) — Data: {data_venc.strftime('%d/%m/%Y')}</small>
-                    </div>
-                ''')
-        except ValueError:
-            continue
+                </body>
+                </html>
+                """
 
-    if qtd_pendencias > 0:
-        msg = MIMEMultipart("alternative")
-        msg["From"] = email_remetente
-        msg["To"] = email_remetente
-        msg["Subject"] = f"🔔 Alerta do Painel: {qtd_pendencias} conta(s)/tarefa(s) requerem atenção!"
+                msg.attach(MIMEText(corpo_html, "html", "utf-8"))
 
-        conteudo_cards = "".join(itens_html)
-
-        corpo_html = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="utf-8">
-            <style>
-                body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 20px; color: #1e293b; }}
-                .container {{ max-width: 560px; background: #ffffff; margin: 0 auto; border-radius: 12px; padding: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; }}
-                .header {{ border-bottom: 2px solid #f1f5f9; padding-bottom: 16px; margin-bottom: 20px; }}
-                .header h2 {{ margin: 0; color: #0f172a; font-size: 20px; }}
-                .header p {{ color: #64748b; font-size: 13px; margin: 6px 0 0 0; }}
-                .item-card {{ border-radius: 8px; padding: 12px 16px; margin-bottom: 12px; font-size: 14px; line-height: 1.5; }}
-                .categoria {{ opacity: 0.75; font-weight: normal; font-size: 13px; }}
-                .vencida {{ background-color: #fef2f2; border-left: 5px solid #ef4444; color: #991b1b; }}
-                .hoje {{ background-color: #fff7ed; border-left: 5px solid #ea580c; color: #9a3412; }}
-                .alerta {{ background-color: #fffbeb; border-left: 5px solid #f59e0b; color: #92400e; }}
-                .badge {{ display: inline-block; font-weight: 700; font-size: 10px; padding: 3px 8px; border-radius: 12px; margin-right: 6px; text-transform: uppercase; letter-spacing: 0.5px; color: #ffffff; }}
-                .badge-vencida {{ background-color: #ef4444; }}
-                .badge-hoje {{ background-color: #ea580c; }}
-                .badge-alerta {{ background-color: #f59e0b; }}
-                .footer {{ margin-top: 28px; text-align: center; border-top: 1px solid #f1f5f9; padding-top: 20px; }}
-                .btn {{ display: inline-block; background-color: #2563eb; color: #ffffff !important; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; }}
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <div class="header">
-                    <h2>🔔 Resumo de Compromissos</h2>
-                    <p>Abaixo estão os itens cadastrados no seu painel que precisam da sua atenção hoje:</p>
-                </div>
-                <div class="content">{conteudo_cards}</div>
-                <div class="footer">
-                    <a href="http://127.0.0.1:5000" class="btn">Abrir Meu Painel de Notas</a>
-                </div>
-            </div>
-        </body>
-        </html>
-        """
-
-        msg.attach(MIMEText(corpo_html, "html", "utf-8"))
-
-        try:
-            servidor = smtplib.SMTP("smtp.gmail.com", 587)
-            servidor.starttls()
-            servidor.login(email_remetente, senha)
-            servidor.sendmail(email_remetente, email_remetente, msg.as_string())
-            servidor.quit()
-            print(f"✅ E-mail HTML enviado com sucesso com {qtd_pendencias} item(ns).")
-        except Exception as e:
-            print(f"❌ Erro ao enviar e-mail automático: {e}")
+                try:
+                    servidor = smtplib.SMTP("smtp.gmail.com", 587)
+                    servidor.starttls()
+                    servidor.login(email_remetente, senha)
+                    servidor.sendmail(email_remetente, u_email, msg.as_string())
+                    servidor.quit()
+                    print(f"✅ E-mail enviado para {u_email} com {qtd_pendencias} alerta(s).")
+                except Exception as e:
+                    print(f"❌ Erro ao enviar e-mail para {u_email}: {e}")
 
 
 # Inicialização do agendador em segundo plano (Execução diária às 08:00)
@@ -203,11 +213,77 @@ scheduler.add_job(verificar_e_enviar_alertas, 'cron', hour=8, minute=0)
 scheduler.start()
 
 # ==============================================================================
-# SEÇÃO 4: ROTAS DA PÁGINA PRINCIPAL E DASHBOARD
+# SEÇÃO 4: ROTAS DE AUTENTICAÇÃO E SEGURANÇA GLOBAL
+# ==============================================================================
+@app.before_request
+def verificar_autenticacao_global():
+    """Bloqueia páginas internas para usuários não autenticados."""
+    rotas_publicas = ['login', 'cadastro', 'static', 'manifest', 'service_worker']
+    if 'usuario_id' not in session and request.endpoint and request.endpoint not in rotas_publicas:
+        flash('Por favor, faça login para acessar o sistema.', 'warning')
+        return redirect(url_for('login'))
+
+
+@app.route('/cadastro', methods=['GET', 'POST'])
+def cadastro():
+    if request.method == 'POST':
+        nome = request.form.get('nome')
+        email = request.form.get('email')
+        senha = request.form.get('senha')
+
+        senha_hash = generate_password_hash(senha)
+
+        try:
+            with conectar_banco() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "INSERT INTO usuarios (nome, email, senha) VALUES (?, ?, ?)",
+                    (nome, email, senha_hash)
+                )
+                conn.commit()
+            flash('Cadastro realizado com sucesso! Faça login para continuar.', 'success')
+            return redirect(url_for('login'))
+        except sqlite3.IntegrityError:
+            flash('Este e-mail já está cadastrado. Tente outro.', 'danger')
+
+    return render_template('cadastro.html')
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        senha = request.form.get('senha')
+
+        with conectar_banco() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, nome, senha FROM usuarios WHERE email = ?", (email,))
+            usuario = cursor.fetchone()
+
+        if usuario and check_password_hash(usuario[2], senha):
+            session['usuario_id'] = usuario[0]
+            session['usuario_nome'] = usuario[1]
+            flash(f'Bem-vindo(a) de volta, {usuario[1]}!', 'success')
+            return redirect(url_for('index'))
+        else:
+            flash('E-mail ou senha incorretos.', 'danger')
+
+    return render_template('login.html')
+
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash('Você saiu do sistema.', 'info')
+    return redirect(url_for('login'))
+
+# ==============================================================================
+# SEÇÃO 5: ROTAS DA PÁGINA PRINCIPAL E DASHBOARD
 # ==============================================================================
 @app.route('/')
 def index():
     limpar_lixeira_automatica()
+    u_id = session.get('usuario_id')
 
     conn = conectar_banco()
     cursor = conn.cursor()
@@ -215,8 +291,8 @@ def index():
     categoria_filtrada = request.args.get('categoria')
     prioridade_filtrada = request.args.get('prioridade')
 
-    comando_sql = "SELECT * FROM notas WHERE status = 'Ativo'"
-    parametros = []
+    comando_sql = "SELECT * FROM notas WHERE status = 'Ativo' AND usuario_id = ?"
+    parametros = [u_id]
 
     if categoria_filtrada and categoria_filtrada != 'Todas':
         comando_sql += " AND categoria = ?"
@@ -240,7 +316,7 @@ def index():
     cursor.execute(comando_sql, parametros)
     notas = cursor.fetchall()
 
-    cursor.execute("SELECT * FROM notas WHERE status = 'Ativo'")
+    cursor.execute("SELECT * FROM notas WHERE status = 'Ativo' AND usuario_id = ?", (u_id,))
     todas_ativas = cursor.fetchall()
     total = len(todas_ativas)
     vencidas = 0
@@ -260,7 +336,7 @@ def index():
             except ValueError:
                 pass
 
-    cursor.execute("SELECT COUNT(*) FROM notas WHERE status = 'Concluido'")
+    cursor.execute("SELECT COUNT(*) FROM notas WHERE status = 'Concluido' AND usuario_id = ?", (u_id,))
     concluidas_total = cursor.fetchone()[0]
 
     notas_processadas = [carregar_detalhes_nota(n, cursor, hoje) for n in notas]
@@ -280,10 +356,11 @@ def index():
                            prioridade_ativa=prioridade_filtrada or 'Todas')
 
 # ==============================================================================
-# SEÇÃO 5: ROTAS DE GESTÃO E EDIÇÃO DE NOTAS
+# SEÇÃO 6: ROTAS DE GESTÃO E EDIÇÃO DE NOTAS
 # ==============================================================================
 @app.route('/adicionar', methods=['POST'])
 def adicionar():
+    u_id = session.get('usuario_id')
     titulo = request.form.get('titulo')
     conteudo = request.form.get('conteudo')
     categoria = request.form.get('categoria')
@@ -295,9 +372,9 @@ def adicionar():
     with conectar_banco() as conn:
         cursor = conn.cursor()
         cursor.execute('''
-            INSERT INTO notas (titulo, conteudo, categoria, prioridade, tipo, data_vencimento, dias_aviso)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (titulo, conteudo, categoria, prioridade, tipo, vencimento, aviso))
+            INSERT INTO notas (titulo, conteudo, categoria, prioridade, tipo, data_vencimento, dias_aviso, usuario_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (titulo, conteudo, categoria, prioridade, tipo, vencimento, aviso, u_id))
         
         nota_id = cursor.lastrowid
 
@@ -315,6 +392,7 @@ def adicionar():
 
 @app.route('/editar/<int:id>', methods=['GET', 'POST'])
 def editar(id):
+    u_id = session.get('usuario_id')
     conn = conectar_banco()
     cursor = conn.cursor()
 
@@ -330,15 +408,20 @@ def editar(id):
         cursor.execute("""
             UPDATE notas 
             SET titulo = ?, conteudo = ?, categoria = ?, prioridade = ?, tipo = ?, data_vencimento = ?, dias_aviso = ?
-            WHERE id = ?
-        """, (titulo, conteudo, categoria, prioridade, tipo, data_vencimento, dias_aviso, id))
+            WHERE id = ? AND usuario_id = ?
+        """, (titulo, conteudo, categoria, prioridade, tipo, data_vencimento, dias_aviso, id, u_id))
         
         conn.commit()
         conn.close()
         return redirect(url_for('index'))
 
-    cursor.execute("SELECT * FROM notas WHERE id = ?", (id,))
+    cursor.execute("SELECT * FROM notas WHERE id = ? AND usuario_id = ?", (id, u_id))
     nota = cursor.fetchone()
+
+    if not nota:
+        conn.close()
+        flash('Nota não encontrada.', 'danger')
+        return redirect(url_for('index'))
 
     cursor.execute("SELECT id, nome, emoji FROM categorias")
     lista_categorias = cursor.fetchall()
@@ -349,59 +432,71 @@ def editar(id):
 
 @app.route('/concluir/<int:id>')
 def concluir(id):
+    u_id = session.get('usuario_id')
     with conectar_banco() as conn:
         cursor = conn.cursor()
         concluido = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        cursor.execute("UPDATE notas SET status = 'Concluido', data_criacao = ? WHERE id = ?", (concluido, id))
+        cursor.execute("UPDATE notas SET status = 'Concluido', data_criacao = ? WHERE id = ? AND usuario_id = ?", (concluido, id, u_id))
         conn.commit()
     return redirect(url_for('index'))
 
 
 @app.route('/restaurar/<int:id>')
 def restaurar(id):
+    u_id = session.get('usuario_id')
     with conectar_banco() as conn:
         cursor = conn.cursor()
         restaurado = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        cursor.execute("UPDATE notas SET status = 'Ativo', data_criacao = ? WHERE id = ?", (restaurado, id))
+        cursor.execute("UPDATE notas SET status = 'Ativo', data_criacao = ? WHERE id = ? AND usuario_id = ?", (restaurado, id, u_id))
         conn.commit()
     return redirect(url_for('concluidas'))
 
 # ==============================================================================
-# SEÇÃO 6: ROTAS DE GERENCIAMENTO DE CHECKLIST (AJAX E ITENS)
+# SEÇÃO 7: ROTAS DE GERENCIAMENTO DE CHECKLIST (AJAX E ITENS)
 # ==============================================================================
 @app.route('/adicionar_item_checklist/<int:nota_id>', methods=['POST'])
 def adicionar_item_checklist(nota_id):
+    u_id = session.get('usuario_id')
     texto = request.form.get('texto', '').strip()
     if texto:
         with conectar_banco() as conn:
             cursor = conn.cursor()
-            cursor.execute("INSERT INTO itens_checklist (nota_id, texto) VALUES (?, ?)", (nota_id, texto))
-            conn.commit()
+            # Garante que a nota pertence ao usuário
+            cursor.execute("SELECT id FROM notas WHERE id = ? AND usuario_id = ?", (nota_id, u_id))
+            if cursor.fetchone():
+                cursor.execute("INSERT INTO itens_checklist (nota_id, texto) VALUES (?, ?)", (nota_id, texto))
+                conn.commit()
     return redirect(request.referrer or url_for('index'))
 
 
 @app.route('/toggle_item_checklist/<int:item_id>', methods=['POST'])
 def toggle_item_checklist(item_id):
+    u_id = session.get('usuario_id')
     with conectar_banco() as conn:
         cursor = conn.cursor()
+        # Verifica se o item pertence a uma nota do usuário logado
+        cursor.execute("""
+            SELECT ic.id, ic.concluido, ic.nota_id 
+            FROM itens_checklist ic
+            JOIN notas n ON ic.nota_id = n.id
+            WHERE ic.id = ? AND n.usuario_id = ?
+        """, (item_id, u_id))
+        item = cursor.fetchone()
+
+        if not item:
+            return jsonify({'success': False, 'error': 'Item não encontrado'}), 404
+
         cursor.execute("UPDATE itens_checklist SET concluido = NOT concluido WHERE id = ?", (item_id,))
         conn.commit()
         
-        cursor.execute("SELECT concluido, nota_id FROM itens_checklist WHERE id = ?", (item_id,))
-        item = cursor.fetchone()
-        
-        novo_status = bool(item[0]) if item else False
-        nota_id = item[1] if item else None
+        novo_status = not bool(item[1])
+        nota_id = item[2]
 
-        progresso = 0
-        total = 0
-        concluidos = 0
-        if nota_id:
-            cursor.execute("SELECT id, concluido FROM itens_checklist WHERE nota_id = ?", (nota_id,))
-            itens = cursor.fetchall()
-            total = len(itens)
-            concluidos = sum(1 for i in itens if i[1] == 1)
-            progresso = int((concluidos / total) * 100) if total > 0 else 0
+        cursor.execute("SELECT id, concluido FROM itens_checklist WHERE nota_id = ?", (nota_id,))
+        itens = cursor.fetchall()
+        total = len(itens)
+        concluidos = sum(1 for i in itens if i[1] == 1)
+        progresso = int((concluidos / total) * 100) if total > 0 else 0
 
     return jsonify({
         'success': True, 
@@ -414,14 +509,18 @@ def toggle_item_checklist(item_id):
 
 @app.route('/deletar_item_checklist/<int:item_id>', methods=['POST', 'GET'])
 def deletar_item_checklist(item_id):
+    u_id = session.get('usuario_id')
     with conectar_banco() as conn:
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM itens_checklist WHERE id = ?", (item_id,))
+        cursor.execute("""
+            DELETE FROM itens_checklist 
+            WHERE id = ? AND nota_id IN (SELECT id FROM notas WHERE usuario_id = ?)
+        """, (item_id, u_id))
         conn.commit()
     return redirect(request.referrer or url_for('index'))
 
 # ==============================================================================
-# SEÇÃO 7: ROTAS DE CATEGORIAS
+# SEÇÃO 8: ROTAS DE CATEGORIAS
 # ==============================================================================
 @app.route('/adicionar_categoria', methods=['POST'])
 def adicionar_categoria():
@@ -449,13 +548,14 @@ def excluir_categoria(id):
     return redirect(url_for('index'))
 
 # ==============================================================================
-# SEÇÃO 8: HISTÓRICO, LIXEIRA E EXCLUSÃO PERMANENTE
+# SEÇÃO 9: HISTÓRICO, LIXEIRA E EXCLUSÃO PERMANENTE
 # ==============================================================================
 @app.route('/concluidas')
 def concluidas():
+    u_id = session.get('usuario_id')
     conn = conectar_banco()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM notas WHERE status = 'Concluido' ORDER BY data_criacao DESC")
+    cursor.execute("SELECT * FROM notas WHERE status = 'Concluido' AND usuario_id = ? ORDER BY data_criacao DESC", (u_id,))
     notas = cursor.fetchall()
     hoje = date.today()
 
@@ -467,9 +567,10 @@ def concluidas():
 
 @app.route('/lixeira')
 def lixeira():
+    u_id = session.get('usuario_id')
     conn = conectar_banco()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM notas WHERE status = 'lixeira' ORDER BY data_exclusao DESC")
+    cursor.execute("SELECT * FROM notas WHERE status = 'lixeira' AND usuario_id = ? ORDER BY data_exclusao DESC", (u_id,))
     notas = cursor.fetchall()
     hoje = date.today()
 
@@ -490,42 +591,46 @@ def lixeira():
 
 @app.route('/deletar_lixeira/<int:id>')
 def deletar_lixeira(id):
+    u_id = session.get('usuario_id')
     with conectar_banco() as conn:
         cursor = conn.cursor()
         data_hoje = datetime.now().strftime('%Y-%m-%d')
-        cursor.execute("UPDATE notas SET status = 'lixeira', data_exclusao = ? WHERE id = ?", (data_hoje, id))
+        cursor.execute("UPDATE notas SET status = 'lixeira', data_exclusao = ? WHERE id = ? AND usuario_id = ?", (data_hoje, id, u_id))
         conn.commit()
     return redirect(url_for('index'))
 
 
 @app.route('/restaurar_lixeira/<int:id>')
 def restaurar_lixeira(id):
+    u_id = session.get('usuario_id')
     with conectar_banco() as conn:
         cursor = conn.cursor()
-        cursor.execute("UPDATE notas SET status = 'Ativo', data_exclusao = NULL WHERE id = ?", (id,))
+        cursor.execute("UPDATE notas SET status = 'Ativo', data_exclusao = NULL WHERE id = ? AND usuario_id = ?", (id, u_id))
         conn.commit()
     return redirect(url_for('lixeira'))
 
 
 @app.route('/excluir_definitivo/<int:id>')
 def excluir_definitivo(id):
+    u_id = session.get('usuario_id')
     with conectar_banco() as conn:
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM notas WHERE id = ?", (id,))
+        cursor.execute("DELETE FROM notas WHERE id = ? AND usuario_id = ?", (id, u_id))
         conn.commit()
     return redirect(url_for('lixeira'))
 
 
 @app.route('/esvaziar_lixeira')
 def esvaziar_lixeira():
+    u_id = session.get('usuario_id')
     with conectar_banco() as conn:
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM notas WHERE status = 'lixeira'")
+        cursor.execute("DELETE FROM notas WHERE status = 'lixeira' AND usuario_id = ?", (u_id,))
         conn.commit()
     return redirect(url_for('lixeira'))
 
 # ==============================================================================
-# SEÇÃO 9: CALENDÁRIO E API REST
+# SEÇÃO 10: CALENDÁRIO E API REST
 # ==============================================================================
 @app.route('/calendario')
 def calendario():
@@ -534,13 +639,14 @@ def calendario():
 
 @app.route('/api/eventos')
 def api_eventos():
+    u_id = session.get('usuario_id')
     with conectar_banco() as conn:
         cursor = conn.cursor()
         cursor.execute("""
             SELECT id, titulo, data_vencimento, prioridade, status, tipo, categoria 
             FROM notas 
-            WHERE data_vencimento IS NOT NULL AND data_vencimento != '' AND status != 'lixeira'
-        """)
+            WHERE data_vencimento IS NOT NULL AND data_vencimento != '' AND status != 'lixeira' AND usuario_id = ?
+        """, (u_id,))
         notas = cursor.fetchall()
 
     eventos = []
@@ -571,10 +677,8 @@ def api_eventos():
     return jsonify(eventos)
 
 # ==============================================================================
-# SEÇÃO 10: ROTAS PWA
+# SEÇÃO 11: ROTAS PWA
 # ==============================================================================
-
-# Rotas de Suporte ao PWA
 @app.route('/manifest.json')
 def manifest():
     return app.send_static_file('manifest.json')
@@ -582,7 +686,6 @@ def manifest():
 @app.route('/sw.js')
 def service_worker():
     return app.send_static_file('sw.js')
-
 
 # ==============================================================================
 # EXECUÇÃO DO SERVIDOR

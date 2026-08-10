@@ -2,8 +2,8 @@ import sqlite3
 
 def inicializar_banco():
     """
-    Cria as tabelas necessárias no SQLite (caso não existam) e popula
-    as categorias padrão do sistema.
+    Cria do zero todas as tabelas necessárias no SQLite,
+    já integrando a estrutura Multi-Usuário de forma nativa.
     """
     with sqlite3.connect('painel_dados.db') as conn:
         cursor = conn.cursor()
@@ -11,7 +11,18 @@ def inicializar_banco():
         # Habilita a verificação de Chaves Estrangeiras no SQLite
         cursor.execute("PRAGMA foreign_keys = ON;")
 
-        # 1. Tabela de Categorias
+        # 1. Tabela de Usuários
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS usuarios (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nome TEXT NOT NULL,
+                email TEXT UNIQUE NOT NULL,
+                senha TEXT NOT NULL,
+                data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+
+        # 2. Tabela de Categorias
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS categorias (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -20,7 +31,7 @@ def inicializar_banco():
             )
         ''')
 
-        # 2. Tabela de Notas
+        # 3. Tabela de Notas (com vínculo ao Usuário)
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS notas (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -33,11 +44,13 @@ def inicializar_banco():
                 data_vencimento TEXT,
                 dias_aviso INTEGER DEFAULT 3,
                 status TEXT DEFAULT 'Ativo',
-                data_exclusao TEXT
+                data_exclusao TEXT,
+                usuario_id INTEGER NOT NULL,
+                FOREIGN KEY (usuario_id) REFERENCES usuarios (id) ON DELETE CASCADE
             )
         ''')
 
-        # 3. Tabela de Itens do Checklist
+        # 4. Tabela de Itens do Checklist
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS itens_checklist (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -57,7 +70,6 @@ def inicializar_banco():
             ('Saúde', '🏥')
         ]
 
-        # Insere as categorias padrão ignorando duplicatas se já existirem
         cursor.executemany(
             "INSERT OR IGNORE INTO categorias (nome, emoji) VALUES (?, ?)", 
             categorias_padrao
@@ -65,7 +77,7 @@ def inicializar_banco():
 
         conn.commit()
 
-    print("✅ Banco de dados e tabelas inicializados com sucesso!")
+    print("✅ Banco de dados recriado do zero com sucesso!")
 
 
 if __name__ == "__main__":
