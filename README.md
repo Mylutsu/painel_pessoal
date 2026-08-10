@@ -1,35 +1,78 @@
-# 📋 Painel Pessoal de Notas e Tarefas
+# 📌 Painel Pessoal de Anotações e Lembretes
+Uma aplicação web completa para gestão de tarefas, notas e compromissos financeiros, com suporte a **alertas automáticos por e-mail**, categorização personalizada, modo escuro e retenção temporária na lixeira.
 
-Um sistema de gerenciamento de notas inteligente desenvolvido com **Python** e **Flask**. O projeto vai além de um simples CRUD, incorporando lógica de negócios para cálculo de prazos, categorias e um dashboard de produtividade em tempo real.
+---
 
 ## 🚀 Funcionalidades
 
-- **Gerenciamento Completo (CRUD):** Criação, listagem e conclusão (exclusão) de notas.
-- **Inteligência de Prazos:** - Cálculo automático de dias restantes para o vencimento.
-  - **Alertas Visuais:** Sistema de cores e animações que destacam notas próximas ao vencimento (Amarelo) ou já vencidas (Vermelho).
-- **Organização por Prioridade:** Ordenação automática que coloca tarefas de "Alta Prioridade" no topo.
-- **Dashboard de Status:** Painel superior que exibe o total de notas, quantas estão vencidas e quantas estão em alerta.
-- **Interface Responsiva:** Design limpo com feedback visual para o usuário.
+- 📋 **Gestão de Notas e Tarefas:** Criação, edição, conclusão e exclusão de notas categorizadas por prioridade (*Alta, Média, Baixa*).
+- 🏷️ **Categorias Personalizadas:** Adicione e remova categorias com emojis customizados.
+- ⏰ **Alertas Inteligentes de Vencimento:** Cálculo automático de dias restantes para contas/tarefas a vencer.
+- 📧 **Notificações por E-mail (HTML):** Agendador em segundo plano (`APScheduler`) que envia resumos diários às 08:00 com cards visuais formatados.
+- 🗑️ **Lixeira Temporária:** Itens excluídos são mantidos por 30 dias com opção de restauração ou exclusão definitiva.
+- 🌙 **Modo Escuro (Dark Mode):** Alternância fluida de temas armazenada nas preferências do navegador (`localStorage`).
+- 🔍 **Busca em Tempo Real:** Filtragem instantânea via JavaScript no front-end.
+
+---
 
 ## 🛠️ Tecnologias Utilizadas
 
-- **Backend:** Python 3.x com framework Flask.
-- **Banco de Dados:** SQLite (persistência de dados local).
-- **Frontend:** HTML5, CSS3 (com animações de keyframes) e Jinja2 para renderização dinâmica.
-- **Lógica de Datas:** Biblioteca `datetime` do Python.
+- **Back-end:** Python, Flask, APScheduler
+- **Banco de Dados:** SQLite3
+- **Front-end:** HTML5, CSS3, JavaScript (Vanilla)
+- **Outros:** SMTP (envio de e-mails via TLS), `python-dotenv`
 
-## 📦 Como rodar o projeto
+---
+
+## ⚙️ Como Executar o Projeto
+
+### Pré-requisitos
+- Python 3.10 ou superior instalado.
+
+### Passo a Passo
 
 1. **Clone o repositório:**
    ```bash
    git clone [https://github.com/Mylutsu/painel_pessoal.git](https://github.com/Mylutsu/painel_pessoal.git)
    cd painel_pessoal
+   ```
 
-2. **Instale as dependencias:**
-    pip install -r requirements.txt
+2. **Crie e ative um ambiente virtual:**
+   ```bash
+   # Windows
+   python -m venv venv
+   venv\Scripts\activate
 
-3. **Execute a aplicação:**
-    python app.py
+   # Linux/Mac
+   python3 -m venv venv
+   source venv/bin/activate
+   ```
 
-4. **Acesse o navegador:**
-    http://127.0.0.1:5000
+3. **Instale as dependências:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Configure as Variáveis de Ambiente:**
+   Crie um arquivo `.env` na raiz do projeto com base no arquivo `.env.example`:
+   ```env
+   EMAIL_USUARIO=seu_email@gmail.com
+   EMAIL_SENHA=sua_senha_de_aplicativo
+   ```
+
+5. **Inicialize o Banco de Dados:**
+   ```bash
+   python init_db.py
+   ```
+
+6. **Execute a aplicação:**
+   ```bash
+   python app.py
+   ```
+   Acesse a aplicação no navegador em `http://127.0.0.1:5000`.
+
+---
+
+## 📄 Licença
+
+Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.

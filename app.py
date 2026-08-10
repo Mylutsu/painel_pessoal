@@ -1,55 +1,168 @@
-# Importamos as ferramentas necessárias do Flask para lidar com o site
-# request: captura o que o usuário digita no formulário
-# redirect/url_for: fazem o navegador pular de uma página para outra
+import os
+import sqlite3
+import smtplib
 from flask import Flask, render_template, request, redirect, url_for
 from datetime import datetime, date, timedelta
-import sqlite3
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from dotenv import load_dotenv
+from apscheduler.schedulers.background import BackgroundScheduler
+
+# Carrega variáveis do arquivo .env
+load_dotenv()
 
 app = Flask(__name__)
 
-# Criamos uma função padrão para conectar ao banco. 
-# Isso evita que a gente tenha que digitar 'sqlite3.connect' em todo lugar.
 def conectar_banco():
     return sqlite3.connect('painel_dados.db')
 
-#FUNÇÃO DE LIMPEZA AUTOMATICA DE NOTAS EXCLUÍDAS
-def limpar_lixeira_automatica(dias_limite=30): #alterar o dias_limite de acordo com a necessidade de duração das notas
+def limpar_lixeira_automatica(dias_limite=30):
     conn = conectar_banco()
     cursor = conn.cursor()
-    
-    # Calcula a data limite para exclusão (hoje - dias_limite)
     data_corte = (datetime.now() - timedelta(days=dias_limite)).strftime('%Y-%m-%d')
-    
-    # Deleta as notas que estão na lixeira e foram excluídas antes da data limite
     cursor.execute("DELETE FROM notas WHERE status = 'lixeira' AND data_exclusao <= ?", (data_corte,))
-    
     conn.commit()
     conn.close()
 
-# --- ROTA PRINCIPAL (MOSTRAR OS DADOS) ---
-@app.route('/')
-def index():
-    limpar_lixeira_automatica() # Chama a função de limpeza toda vez que a página inicial for acessada
+def verificar_e_enviar_alertas():
+    """Consulta o banco de dados e envia e-mail formatado em HTML com cards visuais de alerta."""
+    email_remetente = os.getenv("EMAIL_USUARIO")
+    senha = os.getenv("EMAIL_SENHA")
+
+    if not email_remetente or not senha:
+        print("⚠️ Credenciais de e-mail não encontradas no .env")
+        return
 
     conn = conectar_banco()
     cursor = conn.cursor()
 
-    #captura a categoria da URL (se existir)
+    cursor.execute("""
+        SELECT titulo, data_vencimento, categoria 
+        FROM notas 
+        WHERE status = 'Ativo' AND data_vencimento IS NOT NULL AND data_vencimento != ''
+    """)
+    notas = cursor.fetchall()
+    conn.close()
+
+    hoje = date.today()
+    itens_html = []
+    qtd_pendencias = 0
+
+    for titulo, data_venc_str, categoria in notas:
+        try:
+            data_venc = datetime.strptime(data_venc_str, "%Y-%m-%d").date()
+            dias_restantes = (data_venc - hoje).days
+            cat_nome = categoria if categoria else "Geral"
+
+            if dias_restantes < 0:
+                qtd_pendencias += 1
+                itens_html.append(f'''
+                    <div class="item-card vencida">
+                        <span class="badge badge-vencida">Vencida</span>
+                        <strong>{titulo}</strong> <span class="categoria">({cat_nome})</span><br>
+                        <small>Venceu há {abs(dias_restantes)} dia(s) — Data: {data_venc.strftime('%d/%m/%Y')}</small>
+                    </div>
+                ''')
+            elif dias_restantes == 0:
+                qtd_pendencias += 1
+                itens_html.append(f'''
+                    <div class="item-card hoje">
+                        <span class="badge badge-hoje">Vence Hoje</span>
+                        <strong>{titulo}</strong> <span class="categoria">({cat_nome})</span><br>
+                        <small>Atenção! O vencimento está agendado para hoje.</small>
+                    </div>
+                ''')
+            elif dias_restantes <= 2:
+                qtd_pendencias += 1
+                itens_html.append(f'''
+                    <div class="item-card alerta">
+                        <span class="badge badge-alerta">Em Breve</span>
+                        <strong>{titulo}</strong> <span class="categoria">({cat_nome})</span><br>
+                        <small>Vence em {dias_restantes} dia(s) — Data: {data_venc.strftime('%d/%m/%Y')}</small>
+                    </div>
+                ''')
+        except ValueError:
+            continue
+
+    if qtd_pendencias > 0:
+        msg = MIMEMultipart("alternative")
+        msg["From"] = email_remetente
+        msg["To"] = email_remetente
+        msg["Subject"] = f"🔔 Alerta do Painel: {qtd_pendencias} conta(s)/tarefa(s) requerem atenção!"
+
+        conteudo_cards = "".join(itens_html)
+
+        corpo_html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <style>
+                body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 20px; color: #1e293b; }}
+                .container {{ max-width: 560px; background: #ffffff; margin: 0 auto; border-radius: 12px; padding: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; }}
+                .header {{ border-bottom: 2px solid #f1f5f9; padding-bottom: 16px; margin-bottom: 20px; }}
+                .header h2 {{ margin: 0; color: #0f172a; font-size: 20px; display: flex; align-items: center; }}
+                .header p {{ color: #64748b; font-size: 13px; margin: 6px 0 0 0; }}
+                .item-card {{ border-radius: 8px; padding: 12px 16px; margin-bottom: 12px; font-size: 14px; line-height: 1.5; }}
+                .categoria {{ opacity: 0.75; font-weight: normal; font-size: 13px; }}
+                .vencida {{ background-color: #fef2f2; border-left: 5px solid #ef4444; color: #991b1b; }}
+                .hoje {{ background-color: #fff7ed; border-left: 5px solid #ea580c; color: #9a3412; }}
+                .alerta {{ background-color: #fffbeb; border-left: 5px solid #f59e0b; color: #92400e; }}
+                .badge {{ display: inline-block; font-weight: 700; font-size: 10px; padding: 3px 8px; border-radius: 12px; margin-right: 6px; text-transform: uppercase; letter-spacing: 0.5px; color: #ffffff; }}
+                .badge-vencida {{ background-color: #ef4444; }}
+                .badge-hoje {{ background-color: #ea580c; }}
+                .badge-alerta {{ background-color: #f59e0b; }}
+                .footer {{ margin-top: 28px; text-align: center; border-top: 1px solid #f1f5f9; padding-top: 20px; }}
+                .btn {{ display: inline-block; background-color: #2563eb; color: #ffffff !important; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h2>🔔 Resumo de Compromissos</h2>
+                    <p>Abaixo estão os itens cadastrados no seu painel que precisam da sua atenção hoje:</p>
+                </div>
+                
+                <div class="content">
+                    {conteudo_cards}
+                </div>
+
+                <div class="footer">
+                    <a href="http://127.0.0.1:5000" class="btn">Abrir Meu Painel de Notas</a>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+
+        msg.attach(MIMEText(corpo_html, "html", "utf-8"))
+
+        try:
+            servidor = smtplib.SMTP("smtp.gmail.com", 587)
+            servidor.starttls()
+            servidor.login(email_remetente, senha)
+            servidor.sendmail(email_remetente, email_remetente, msg.as_string())
+            servidor.quit()
+            print(f"✅ E-mail HTML enviado com sucesso com {qtd_pendencias} item(ns).")
+        except Exception as e:
+            print(f"❌ Erro ao enviar e-mail automático: {e}")
+
+@app.route('/')
+def index():
+    limpar_lixeira_automatica()
+
+    conn = conectar_banco()
+    cursor = conn.cursor()
+
     categoria_filtrada = request.args.get('categoria')
 
-    # 1. Filtro de exibição (Apenas Ativas)
     comando_sql = "SELECT * FROM notas WHERE status = 'Ativo'"
     parametros = []
 
-    #se houver filtro e não for "Todas", adicionamos o WHERE
     if categoria_filtrada and categoria_filtrada != 'Todas':
         comando_sql += " AND categoria = ?"
         parametros.append(categoria_filtrada)
 
-    # Explicando a nova consulta SQL:
-    # Usamos o CASE para dar um "peso" numérico para cada texto:
-    # Se for Alta, vale 1; Se for Média, vale 2; Se for Baixa, vale 3.
-    # Assim, ao ordenar por esse 'peso', as Altas (1) aparecem primeiro!
     comando_sql += """
         ORDER BY 
             CASE prioridade
@@ -64,8 +177,6 @@ def index():
     cursor.execute(comando_sql, parametros)
     notas = cursor.fetchall()
 
-    # --- Lógica do Dashboard (Mantemos global para você ver o total geral) ---
-    # 2. Lógica do Dashboard (Cálculos baseados em todas as Ativas)
     cursor.execute("SELECT * FROM notas WHERE status = 'Ativo'")
     todas_ativas = cursor.fetchall()
     total = len(todas_ativas)
@@ -75,28 +186,39 @@ def index():
 
     for n in todas_ativas:
         if n[7]:
-            data_v = datetime.strptime(n[7], '%Y-%m-%d').date()
-            diferenca = (data_v - hoje).days
-            if diferenca < 0:
-                vencidas += 1
-            elif diferenca <= (n[8] or 3): #contagem para alerta de aviso ou popar alerta em 3 dias
-                alertas +=1
-    # 3. Contagem de Concluídas para o Dashboard
-    cursor.execute("SELECT COUNT (*) FROM notas WHERE status = 'Concluido'")
+            try:
+                data_v = datetime.strptime(n[7], '%Y-%m-%d').date()
+                diferenca = (data_v - hoje).days
+                dias_aviso = int(n[8]) if n[8] and str(n[8]).isdigit() else 3
+                if diferenca < 0:
+                    vencidas += 1
+                elif diferenca <= dias_aviso:
+                    alertas += 1
+            except ValueError:
+                pass
+
+    cursor.execute("SELECT COUNT(*) FROM notas WHERE status = 'Concluido'")
     concluidas_total = cursor.fetchone()[0]
 
-    # 4. Processamento para exibição no HTML
     notas_processadas = []
     for n in notas:
         n_lista = list(n)
         status_visual = ""
         
-        if n[7]: # Se tiver uma data de vencimento
-            data_v = datetime.strptime(n[7], '%Y-%m-%d').date()
-            diferenca = (data_v - hoje).days
-            if diferenca < 0: status_visual = "vencido"
-            elif diferenca <= (n[8] or 3): status_visual = "alerta"
-            n_lista[7] = data_v.strftime('%d/%m/%Y') #formatação para data brasileira
+        if n[7]:
+            try:
+                data_v = datetime.strptime(n[7], '%Y-%m-%d').date()
+                diferenca = (data_v - hoje).days
+                dias_aviso = int(n[8]) if n[8] and str(n[8]).isdigit() else 3
+                
+                if diferenca < 0: 
+                    status_visual = "vencido"
+                elif diferenca <= dias_aviso: 
+                    status_visual = "alerta"
+                
+                n_lista[7] = data_v.strftime('%d/%m/%Y')
+            except ValueError:
+                pass
 
         n_lista.append(status_visual)
         notas_processadas.append(n_lista)
@@ -106,45 +228,35 @@ def index():
 
     conn.close()
     return render_template('index.html',
-                           notas = notas_processadas,
-                           total = total,
-                           vencidas = vencidas,
-                           alertas = alertas,
-                           concluidas_total = concluidas_total,
-                           categorias = lista_categorias,
-                           categoria_ativa = categoria_filtrada or 'Todas')
+                           notas=notas_processadas,
+                           total=total,
+                           vencidas=vencidas,
+                           alertas=alertas,
+                           concluidas_total=concluidas_total,
+                           categorias=lista_categorias,
+                           categoria_ativa=categoria_filtrada or 'Todas')
 
-# --- ROTA DE AÇÃO (SALVAR OS DADOS) ---
-# 'methods=['POST']' indica que esta rota recebe dados enviados por um formulário
 @app.route('/adicionar', methods=['POST'])
 def adicionar():
-    # O comando 'request.form.get' vai buscar o que foi digitado no 'name' do HTML
     titulo = request.form.get('titulo')
     conteudo = request.form.get('conteudo')
     categoria = request.form.get('categoria')
     prioridade = request.form.get('prioridade')
     tipo = request.form.get('tipo')
-    vencimento = request.form.get('data_vencimento') # Pode vir vazio
-    aviso = request.form.get('dias_aviso') # Pode vir vazio
+    vencimento = request.form.get('data_vencimento') or None
+    aviso = request.form.get('dias_aviso') or None
 
     conn = conectar_banco()
     cursor = conn.cursor()
-    
-    # O comando SQL INSERT coloca as informações nas colunas certas.
-    # Usamos '?' por segurança (evita que invasores mandem comandos SQL pelo formulário)
     cursor.execute('''
         INSERT INTO notas (titulo, conteudo, categoria, prioridade, tipo, data_vencimento, dias_aviso)
         VALUES (?, ?, ?, ?, ?, ?, ?)
     ''', (titulo, conteudo, categoria, prioridade, tipo, vencimento, aviso))
     
-    # 6. Salvamos a alteração no arquivo .db
     conn.commit()
     conn.close()
-    
-    # 7. Após salvar, mandamos o usuário de volta para a página inicial
     return redirect(url_for('index'))
 
-#Rota para adicionar novas categorias
 @app.route('/adicionar_categoria', methods=['POST'])
 def adicionar_categoria():
     nome = request.form['nome'].strip()
@@ -154,62 +266,46 @@ def adicionar_categoria():
         conn = conectar_banco()
         cursor = conn.cursor()
         try:
-            # Insere a nova categoria no banco dinamicamente!
             cursor.execute("INSERT INTO categorias (nome, emoji) VALUES (?, ?)", (nome, emoji))
             conn.commit()
         except sqlite3.IntegrityError:
-            pass # Ignora se tentar adicionar uma categoria com o mesmo nome
+            pass
         conn.close()
         
     return redirect(url_for('index'))
-#Rota para excluir categorias pelo ID
+
 @app.route('/excluir_categoria/<int:id>')
 def excluir_categoria(id):
     conn = conectar_banco()
     cursor = conn.cursor()
-    
-    # Remove a categoria usando o ID único dela
     cursor.execute("DELETE FROM categorias WHERE id = ?", (id,))
-    
     conn.commit()
     conn.close()
     return redirect(url_for('index'))
 
-
-# Rota para excluir (deletar) uma nota
-# O <int:id> captura o número da nota que queremos apagar
 @app.route('/concluir/<int:id>')
 def concluir(id):
     conn = conectar_banco()
     cursor = conn.cursor()
-    
-    # O comando SQL para remover a linha específica do banco
     concluido = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    cursor.execute("UPDATE notas SET status = 'Concluido', data_criacao = ? WHERE id = ?", (concluido, id,))
-    
+    cursor.execute("UPDATE notas SET status = 'Concluido', data_criacao = ? WHERE id = ?", (concluido, id))
     conn.commit()
     conn.close()
-    
-    # Após concluir a nota, redireciona para a página inicial para atualizar a lista
     return redirect(url_for('index'))
 
 @app.route('/restaurar/<int:id>')
 def restaurar(id):
     conn = conectar_banco()
     cursor = conn.cursor()
-    
-    # Atualiza para Ativo e renova o timestamp para o momento atual
     restaurado = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     cursor.execute("UPDATE notas SET status = 'Ativo', data_criacao = ? WHERE id = ?", (restaurado, id))
-    
     conn.commit()
     conn.close()
     return redirect(url_for('concluidas'))
 
-
 @app.route('/editar/<int:id>', methods=['GET', 'POST'])
 def editar(id):
-    conn = sqlite3.connect('painel_dados.db') # Nome correto do seu banco
+    conn = conectar_banco()
     cursor = conn.cursor()
 
     if request.method == 'POST':
@@ -217,9 +313,9 @@ def editar(id):
         conteudo = request.form['conteudo']
         categoria = request.form['categoria']
         prioridade = request.form['prioridade']
-        tipo = request.form['tipo'] # Coluna que você tem no banco
-        data_vencimento = request.form['data_vencimento']
-        dias_aviso = request.form['dias_aviso'] # Nome correto da coluna
+        tipo = request.form['tipo']
+        data_vencimento = request.form['data_vencimento'] or None
+        dias_aviso = request.form['dias_aviso'] or None
 
         cursor.execute("""
             UPDATE notas 
@@ -240,116 +336,91 @@ def editar(id):
     conn.close()
     return render_template('editar.html', nota=nota, categorias=lista_categorias)
 
-
 @app.route('/concluidas')
 def concluidas():
     conn = conectar_banco()
     cursor = conn.cursor()
-    
-    # Busca apenas as que marcamos como Concluído
     cursor.execute("SELECT * FROM notas WHERE status = 'Concluido' ORDER BY data_criacao DESC")
     notas = cursor.fetchall()
-
 
     notas_processadas = []
     for n in notas:
         n_lista = list(n)
         if n[7]:
-            data_v = datetime.strptime(n[7], '%Y-%m-%d').date()
-            n_lista[7] = data_v.strftime('%d/%m/%Y')
+            try:
+                data_v = datetime.strptime(n[7], '%Y-%m-%d').date()
+                n_lista[7] = data_v.strftime('%d/%m/%Y')
+            except ValueError:
+                pass
         notas_processadas.append(n_lista)
 
     conn.close()
-    
     return render_template('concluidas.html', notas=notas_processadas)
 
-
-###########################################
-############## ROTAS LIXEIRA ##############
-###########################################
-
-# 1. ROTA PARA EXIBIR A PÁGINA DA LIXEIRA
 @app.route('/lixeira')
 def lixeira():
     conn = conectar_banco()
     cursor = conn.cursor()
-    
-    # Busca apenas as notas com status 'lixeira'
     cursor.execute("SELECT * FROM notas WHERE status = 'lixeira' ORDER BY data_exclusao DESC")
     notas = cursor.fetchall()
 
     notas_processadas = []
     for n in notas:
         n_lista = list(n)
-        # Formata a data de vencimento se houver
         if n[7]:
-            data_v = datetime.strptime(n[7], '%Y-%m-%d').date()
-            n_lista[7] = data_v.strftime('%d/%m/%Y')
-        # Formata a data de exclusão (que agora é o índice 10 do banco)
+            try:
+                data_v = datetime.strptime(n[7], '%Y-%m-%d').date()
+                n_lista[7] = data_v.strftime('%d/%m/%Y')
+            except ValueError:
+                pass
         if n[10]:
-            data_ex = datetime.strptime(n[10], '%Y-%m-%d').date()
-            n_lista[10] = data_ex.strftime('%d/%m/%Y')
+            try:
+                data_ex = datetime.strptime(n[10], '%Y-%m-%d').date()
+                n_lista[10] = data_ex.strftime('%d/%m/%Y')
+            except ValueError:
+                pass
             
         notas_processadas.append(n_lista)
 
     conn.close()
     return render_template('lixeira.html', notas=notas_processadas)
 
-# 2. ROTA PARA RESTAURAR DA LIXEIRA DE VOLTA PARA O PAINEL
 @app.route('/restaurar_lixeira/<int:id>')
 def restaurar_lixeira(id):
     conn = conectar_banco()
     cursor = conn.cursor()
-    
-    # Volta o status para 'Ativo' e limpa a data de exclusão
     cursor.execute("UPDATE notas SET status = 'Ativo', data_exclusao = NULL WHERE id = ?", (id,))
-    
     conn.commit()
     conn.close()
     return redirect(url_for('lixeira'))
 
-# 3. ROTA PARA MANDAR PARA A LIXEIRA
 @app.route('/deletar_lixeira/<int:id>')
 def deletar_lixeira(id):
     conn = conectar_banco()
     cursor = conn.cursor()
-
     data_hoje = datetime.now().strftime('%Y-%m-%d')
-    
-    # Ajuste o nome da coluna de status e data se forem diferentes no seu banco
     cursor.execute("UPDATE notas SET status = 'lixeira', data_exclusao = ? WHERE id = ?", (data_hoje, id))
-    
     conn.commit()
     conn.close()
     return redirect(url_for('index'))
 
-# 4. ROTA PARA EXCLUSÃO DEFINITIVA (EVAPORAR DO BANCO)
 @app.route('/excluir_definitivo/<int:id>')
 def excluir_definitivo(id):
     conn = conectar_banco()
     cursor = conn.cursor()
-    
-    # Remove completamente a nota do banco
     cursor.execute("DELETE FROM notas WHERE id = ?", (id,))
-    
     conn.commit()
     conn.close()
     return redirect(url_for('lixeira'))
 
-
-# 5. ROTA PARA ESVAZIAR TODA A LIXEIRA DE UMA VEZ
 @app.route('/esvaziar_lixeira')
 def esvaziar_lixeira():
     conn = conectar_banco()
     cursor = conn.cursor()
-    
-    # Remove todas as notas que estão na lixeira
     cursor.execute("DELETE FROM notas WHERE status = 'lixeira'")
-    
     conn.commit()
     conn.close()
     return redirect(url_for('lixeira'))
-
 
 if __name__ == "__main__":
     app.run(debug=True)

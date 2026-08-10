@@ -1,2 +1,9 @@
-#.db
+#Banco de Dados
+painel_dados.db
+*.db
+
+#Python
 __pycache__/
+
+#Ambiente
+.env
