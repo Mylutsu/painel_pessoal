@@ -1,19 +1,24 @@
-/* ==========================================
-   1. Variáveis e Reset Global
-   ========================================== */
+/* ==========================================================================
+   SEÇÃO 1: PALETA DE CORES & VARIÁVEIS (DESIGN SYSTEM)
+   --------------------------------------------------------------------------
+   O uso de CSS Variables (var) permite trocar as cores de todo o sistema
+   instantaneamente quando o Modo Escuro é ativado na tag <body>.
+   ========================================================================== */
 :root {
-    --bg-color: #f1f5f9;
-    --card-bg: #ffffff;
-    --text-color: #0f172a;
-    --text-muted: #64748b;
-    --border-color: #e2e8f0;
-    --bg-item: #f8fafc;
-    --bg-input: #ffffff;
-    --primary-color: #2563eb;
-    --primary-hover: #1d4ed8;
+    /* Tema Claro (Padrão) */
+    --bg-color: #f1f5f9;       /* Fundo geral da página */
+    --card-bg: #ffffff;        /* Fundo dos cartões e caixas */
+    --text-color: #0f172a;     /* Cor dos textos principais */
+    --text-muted: #64748b;    /* Cor dos textos secundários / legendas */
+    --border-color: #e2e8f0;  /* Cor das bordas e divisores */
+    --bg-item: #f8fafc;       /* Fundo de itens internos (ex: itens do checklist) */
+    --bg-input: #ffffff;      /* Fundo dos campos de formulário */
+    --primary-color: #2563eb; /* Azul principal dos botões de ação */
+    --primary-hover: #1d4ed8; /* Azul mais escuro no efeito hover */
 }
 
 body.dark-mode {
+    /* Tema Escuro (Sobrescreve as variáveis do :root) */
     --bg-color: #0f172a;
     --card-bg: #1e293b;
     --text-color: #f8fafc;
@@ -25,8 +30,13 @@ body.dark-mode {
     --primary-hover: #2563eb;
 }
 
+/* ==========================================================================
+   SEÇÃO 2: RESET & ESTRUTURA GLOBAL
+   --------------------------------------------------------------------------
+   Reseta margens do navegador e define o comportamento do container principal.
+   ========================================================================== */
 * {
-    box-sizing: border-box;
+    box-sizing: border-box; /* Garante que padding/bordas não alterem a largura total */
     margin: 0;
     padding: 0;
 }
@@ -36,18 +46,21 @@ body {
     background-color: var(--bg-color);
     color: var(--text-color);
     line-height: 1.5;
-    transition: background-color 0.3s ease, color 0.3s ease;
+    transition: background-color 0.3s ease, color 0.3s ease; /* Transição suave ao trocar de tema */
 }
 
+/* Container central que limita a largura máxima do site */
 .app-container {
     max-width: 1200px;
     margin: 0 auto;
     padding: 20px;
 }
 
-/* ==========================================
-   2. Cabeçalho e Dashboard
-   ========================================== */
+/* ==========================================================================
+   SEÇÃO 3: CABEÇALHO & NAVEGAÇÃO SUPERIOR
+   --------------------------------------------------------------------------
+   Estilização do topo do site, título e botões de navegação.
+   ========================================================================== */
 .main-header {
     margin-bottom: 24px;
 }
@@ -70,6 +83,7 @@ body {
     align-items: center;
 }
 
+/* Botão de Alternar Tema (Sol/Lua) */
 .btn-theme {
     background: var(--card-bg);
     border: 1px solid var(--border-color);
@@ -80,6 +94,7 @@ body {
     font-size: 16px;
 }
 
+/* Botões de Navegação (Calendário, Concluídas, Lixeira, etc) */
 .btn-nav {
     background: var(--card-bg);
     border: 1px solid var(--border-color);
@@ -89,8 +104,18 @@ body {
     text-decoration: none;
     font-size: 14px;
     font-weight: 600;
+    transition: background 0.2s;
 }
 
+.btn-nav:hover {
+    background: var(--bg-item);
+}
+
+/* ==========================================================================
+   SEÇÃO 4: DASHBOARD DE MÉTRICAS (CARDS DO TOPO)
+   --------------------------------------------------------------------------
+   Cards numéricos que exibem resumos (Total de notas, Alertas, Vencidas).
+   ========================================================================== */
 .dashboard-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -118,31 +143,45 @@ body {
     font-weight: 600;
 }
 
-.alerta-card { border-top: 4px solid #f59e0b; }
-.vencido-card { border-top: 4px solid #ef4444; }
+/* Indicadores coloridos no topo dos cards do dashboard */
+.alerta-card { border-top: 4px solid #f59e0b; }  /* Amarelo */
+.vencido-card { border-top: 4px solid #ef4444; } /* Vermelho */
 
-/* ==========================================
-   3. Layout Princial (Grid Sidebar + Feed)
-   ========================================== */
+/* ==========================================================================
+   SEÇÃO 5: LAYOUT PRINCIPAL (SIDEBAR + FEED DE NOTAS)
+   --------------------------------------------------------------------------
+   Divisão da tela em 2 colunas usando CSS Grid e suporte a celulares.
+   ========================================================================== */
 .content-grid {
     display: grid;
-    grid-template-columns: 320px 1fr;
+    grid-template-columns: 320px 1fr; /* Sidebar com 320px fixa, Feed ocupa o restante */
     gap: 24px;
 }
 
+/* Responsividade: Em telas menores que 850px, vira uma única coluna */
 @media (max-width: 850px) {
     .content-grid {
         grid-template-columns: 1fr;
     }
 }
 
-/* Sidebar e Formulários */
 .sidebar {
     display: flex;
     flex-direction: column;
     gap: 20px;
 }
 
+.feed {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* ==========================================================================
+   SEÇÃO 6: FORMULÁRIOS & ENTRADA DE DADOS
+   --------------------------------------------------------------------------
+   Estilos padronizados para criação de notas, edição e gestão de categorias.
+   ========================================================================== */
 .card-form {
     background: var(--card-bg);
     border: 1px solid var(--border-color);
@@ -161,6 +200,7 @@ body {
     gap: 12px;
 }
 
+/* Inputs, Selects e Textareas unificados */
 .card-form input, 
 .card-form select, 
 .card-form textarea {
@@ -197,6 +237,7 @@ body {
     font-weight: 600;
 }
 
+/* Botões de Ação Principal (Azul) e Secundário (Transparente) */
 .btn-principal {
     background-color: var(--primary-color);
     color: #ffffff;
@@ -222,6 +263,7 @@ body {
     font-size: 12px;
 }
 
+/* Lista de Categorias cadastradas na Sidebar */
 .form-inline {
     display: flex;
     gap: 8px;
@@ -251,15 +293,24 @@ body {
     font-weight: bold;
 }
 
-/* ==========================================
-   4. Feed, Filtros e Grid de Cards
-   ========================================== */
-.feed {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
+/* Utilitários do Index */
+.is-hidden {
+    display: none !important;
 }
 
+.input-emoji {
+    width: 60px !important;
+}
+
+.mt-xs {
+    margin-top: 6px;
+}
+
+/* ==========================================================================
+   SEÇÃO 7: BARRA DE BUSCA & FILTROS (CHIPS)
+   --------------------------------------------------------------------------
+   Campo de pesquisa em tempo real e chips de filtro (Categoria / Prioridade).
+   ========================================================================== */
 .filter-bar {
     display: flex;
     flex-direction: column;
@@ -273,6 +324,22 @@ body {
     border-radius: 8px;
     background-color: var(--card-bg);
     color: var(--text-color);
+}
+
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.filter-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    min-width: 80px;
 }
 
 .categorias-chips {
@@ -298,13 +365,39 @@ body {
     border-color: var(--primary-color);
 }
 
+/* ==========================================================================
+   SEÇÃO 8: SEÇÕES DE PRIORIDADE & GRID DE NOTAS
+   --------------------------------------------------------------------------
+   Agrupamento de notas por linha de prioridade (🔴 Alta, 🟡 Média, 🟢 Baixa).
+   ========================================================================== */
+.priority-section {
+    margin-bottom: 28px;
+}
+
+.priority-title {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-color);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 6px;
+}
+
 .notas-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
     gap: 16px;
-    align-items: start;
+    align-items: start; /* Impede que notas vizinhas fiquem esticadas */
 }
 
+/* ==========================================================================
+   SEÇÃO 9: CARDS DE NOTA & BOTÕES DE AÇÃO
+   --------------------------------------------------------------------------
+   Design dos cartões individuais de nota/checklist e seus botões inferiores.
+   ========================================================================== */
 .nota-card {
     background: var(--card-bg);
     border: 1px solid var(--border-color);
@@ -316,6 +409,7 @@ body {
     position: relative;
 }
 
+/* Bordas laterais para alertas e vencimentos */
 .nota-card.vencido { border-left: 5px solid #ef4444; }
 .nota-card.alerta { border-left: 5px solid #f59e0b; }
 
@@ -342,6 +436,7 @@ body {
     text-transform: uppercase;
 }
 
+/* Cores das Badges de Prioridade */
 .prio-alta { background: #fee2e2; color: #991b1b; }
 .prio-média { background: #fef3c7; color: #92400e; }
 .prio-baixa { background: #dcfce7; color: #166534; }
@@ -365,6 +460,7 @@ body {
     margin-bottom: 12px;
 }
 
+/* Rodapé e Botões de Ação do Card */
 .nota-footer {
     display: flex;
     gap: 6px;
@@ -383,50 +479,18 @@ body {
     font-weight: 600;
     border: 1px solid var(--border-color);
     color: var(--text-color);
-}
-
-/* ==========================================
-   Estilos de Agrupamento e Filtro por Prioridade
-   ========================================== */
-.filter-group {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
-.filter-label {
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    min-width: 80px;
-}
-
-.priority-section {
-    margin-bottom: 28px;
-}
-
-.priority-title {
-    font-size: 15px;
-    font-weight: 700;
-    margin-bottom: 12px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: var(--text-color);
-    border-bottom: 1px solid var(--border-color);
-    padding-bottom: 6px;
+    transition: background 0.2s, color 0.2s;
 }
 
 .btn-concluir:hover { background: #dcfce7; color: #166534; }
 .btn-editar:hover { background: #e0f2fe; color: #075985; }
 .btn-excluir:hover { background: #fee2e2; color: #991b1b; }
 
-/* ==========================================
-   5. Checklist Interativo
-   ========================================== */
+/* ==========================================================================
+   SEÇÃO 10: CHECKLIST INTERATIVO & BARRA DE PROGRESSO
+   --------------------------------------------------------------------------
+   Estilos específicos para cartões do tipo lista / checklist.
+   ========================================================================== */
 .checklist-container {
     margin: 12px 0;
     display: flex;
@@ -544,4 +608,138 @@ body {
 
 .add-item-card-form button:hover {
     background-color: #1d4ed8;
+}
+
+/* ==========================================================================
+   SEÇÃO 11: PÁGINAS SECUNDÁRIAS (EDIÇÃO, LIXEIRA & CONCLUÍDAS)
+   --------------------------------------------------------------------------
+   Layouts para telas específicas de edição, histório de concluídas e lixeira.
+   ========================================================================== */
+.edit-container {
+    max-width: 650px;
+    margin: 40px auto;
+    padding: 0 16px;
+}
+
+.form-actions-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.form-actions-row .btn-principal, 
+.form-actions-row .btn-secundario {
+    flex: 1;
+    text-align: center;
+    padding: 12px;
+    text-decoration: none;
+    font-weight: 600;
+    border-radius: 8px;
+    display: inline-block;
+}
+
+.sem-notas {
+    text-align: center;
+    color: var(--text-muted);
+    padding: 40px 0;
+    font-size: 15px;
+}
+
+/* Ações específicas da Lixeira */
+.lixeira-header-info {
+    color: var(--text-muted);
+    font-size: 14px;
+    margin-top: 4px;
+}
+
+.lixeira-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 20px;
+}
+
+.btn-danger {
+    background: transparent;
+    border: 1px solid #ef4444;
+    color: #ef4444;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.btn-danger:hover {
+    background: #ef4444;
+    color: #ffffff;
+}
+
+.nota-card.excluida {
+    border-left: 5px solid var(--text-muted);
+}
+
+/* Borda verde para notas concluídas */
+.nota-card.concluida {
+    border-left: 5px solid #22c55e;
+}
+
+
+/* ==========================================================================
+   SEÇÃO 12: CALENDÁRIO (FULLCALENDAR)
+   --------------------------------------------------------------------------
+   Estilização do componente de calendário integrado ao sistema de temas.
+   ========================================================================== */
+.calendar-card {
+    background-color: var(--card-bg);
+    border-radius: 12px;
+    padding: 24px;
+    border: 1px solid var(--border-color);
+    margin-top: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.fc {
+    color: var(--text-color);
+    font-family: inherit;
+}
+
+.fc-theme-standard td, 
+.fc-theme-standard th {
+    border-color: var(--border-color) !important;
+}
+
+.fc .fc-toolbar-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.fc .fc-button-primary {
+    background-color: var(--primary-color) !important;
+    border-color: var(--primary-color) !important;
+    text-transform: capitalize;
+    font-weight: 600;
+}
+
+.fc .fc-button-primary:hover {
+    background-color: var(--primary-hover) !important;
+}
+
+.fc .fc-button-primary:disabled {
+    background-color: var(--border-color) !important;
+    border-color: var(--border-color) !important;
+    opacity: 0.6;
+}
+
+.fc-daygrid-event {
+    cursor: pointer;
+    border-radius: 6px;
+    padding: 2px 6px;
+    font-size: 0.85rem;
+    transition: transform 0.1s ease;
+}
+
+.fc-daygrid-event:hover {
+    transform: scale(1.02);
 }

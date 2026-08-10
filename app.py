@@ -1,33 +1,86 @@
 import os
 import sqlite3
 import smtplib
-from flask import Flask, render_template, request, redirect, url_for, jsonify
 from datetime import datetime, date, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+
+from flask import Flask, render_template, request, redirect, url_for, jsonify
 from dotenv import load_dotenv
 from apscheduler.schedulers.background import BackgroundScheduler
 
-# Carrega variáveis de ambiente do arquivo .env
+# ==============================================================================
+# SEÇÃO 1: CONFIGURAÇÃO DA APLICAÇÃO E AMBIENTE
+# ==============================================================================
 load_dotenv()
 
 app = Flask(__name__)
 
+# ==============================================================================
+# SEÇÃO 2: FUNÇÕES UTILITÁRIAS E MANIPULAÇÃO DE BANCO DE DADOS
+# ==============================================================================
 def conectar_banco():
+    """Cria e retorna uma conexão com o banco SQLite ativando Chaves Estrangeiras."""
     conn = sqlite3.connect('painel_dados.db')
     conn.execute("PRAGMA foreign_keys = ON;")
     return conn
 
-def limpar_lixeira_automatica(dias_limite=30):
-    conn = conectar_banco()
-    cursor = conn.cursor()
-    data_corte = (datetime.now() - timedelta(days=dias_limite)).strftime('%Y-%m-%d')
-    cursor.execute("DELETE FROM notas WHERE status = 'lixeira' AND data_exclusao <= ?", (data_corte,))
-    conn.commit()
-    conn.close()
 
+def carregar_detalhes_nota(nota, cursor, hoje):
+    """
+    Processa metadados de uma nota: calcula prazos, status visual de alerta
+    e consolida os itens de checklist com o percentual de progresso.
+    """
+    n_lista = list(nota)
+    status_visual = ""
+    
+    # Processa data de vencimento e alerta (n[7] = data_vencimento, n[8] = dias_aviso)
+    if n_lista[7]:
+        try:
+            data_v = datetime.strptime(n_lista[7], '%Y-%m-%d').date()
+            diferenca = (data_v - hoje).days
+            dias_aviso = int(n_lista[8]) if n_lista[8] and str(n_lista[8]).isdigit() else 3
+            
+            if diferenca < 0:
+                status_visual = "vencido"
+            elif diferenca <= dias_aviso:
+                status_visual = "alerta"
+            
+            n_lista[7] = data_v.strftime('%d/%m/%Y')
+        except ValueError:
+            pass
+
+    n_lista.append(status_visual)  # Índice 11: status_visual
+
+    # Processa itens do checklist
+    cursor.execute("SELECT id, texto, concluido FROM itens_checklist WHERE nota_id = ? ORDER BY id ASC", (n_lista[0],))
+    itens = cursor.fetchall()
+    
+    total_itens = len(itens)
+    concluidos = sum(1 for item in itens if item[2] == 1)
+    progresso = int((concluidos / total_itens) * 100) if total_itens > 0 else 0
+
+    n_lista.append(itens)         # Índice 12: lista de tuplas (id, texto, concluido)
+    n_lista.append(progresso)     # Índice 13: % de progresso
+    n_lista.append(total_itens)   # Índice 14: total de itens
+    n_lista.append(concluidos)    # Índice 15: itens concluídos
+
+    return n_lista
+
+
+def limpar_lixeira_automatica(dias_limite=30):
+    """Exclui permanentemente notas que estão na lixeira há mais de X dias."""
+    with conectar_banco() as conn:
+        cursor = conn.cursor()
+        data_corte = (datetime.now() - timedelta(days=dias_limite)).strftime('%Y-%m-%d')
+        cursor.execute("DELETE FROM notas WHERE status = 'lixeira' AND data_exclusao <= ?", (data_corte,))
+        conn.commit()
+
+# ==============================================================================
+# SEÇÃO 3: AGENDADOR DE TAREFAS E NOTIFICAÇÕES POR E-MAIL
+# ==============================================================================
 def verificar_e_enviar_alertas():
-    """Consulta o banco de dados e envia e-mail formatado em HTML com cards visuais de alerta."""
+    """Consulta compromissos e envia resumo HTML com os prazos prestes a vencer."""
     email_remetente = os.getenv("EMAIL_USUARIO")
     senha = os.getenv("EMAIL_SENHA")
 
@@ -35,16 +88,14 @@ def verificar_e_enviar_alertas():
         print("⚠️ Credenciais de e-mail não encontradas no .env")
         return
 
-    conn = conectar_banco()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT titulo, data_vencimento, categoria 
-        FROM notas 
-        WHERE status = 'Ativo' AND data_vencimento IS NOT NULL AND data_vencimento != ''
-    """)
-    notas = cursor.fetchall()
-    conn.close()
+    with conectar_banco() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT titulo, data_vencimento, categoria 
+            FROM notas 
+            WHERE status = 'Ativo' AND data_vencimento IS NOT NULL AND data_vencimento != ''
+        """)
+        notas = cursor.fetchall()
 
     hoje = date.today()
     itens_html = []
@@ -145,49 +196,15 @@ def verificar_e_enviar_alertas():
         except Exception as e:
             print(f"❌ Erro ao enviar e-mail automático: {e}")
 
-# Configura o agendador em segundo plano
+
+# Inicialização do agendador em segundo plano (Execução diária às 08:00)
 scheduler = BackgroundScheduler()
 scheduler.add_job(verificar_e_enviar_alertas, 'cron', hour=8, minute=0)
 scheduler.start()
 
-def carregar_detalhes_nota(nota, cursor, hoje):
-    """Função auxiliar para processar datas, alertas e itens de checklist de uma nota."""
-    n_lista = list(nota)
-    status_visual = ""
-    
-    # Processa data de vencimento e alerta (n[7] = data_vencimento, n[8] = dias_aviso)
-    if n_lista[7]:
-        try:
-            data_v = datetime.strptime(n_lista[7], '%Y-%m-%d').date()
-            diferenca = (data_v - hoje).days
-            dias_aviso = int(n_lista[8]) if n_lista[8] and str(n_lista[8]).isdigit() else 3
-            
-            if diferenca < 0:
-                status_visual = "vencido"
-            elif diferenca <= dias_aviso:
-                status_visual = "alerta"
-            
-            n_lista[7] = data_v.strftime('%d/%m/%Y')
-        except ValueError:
-            pass
-
-    n_lista.append(status_visual)  # Índice 11: status_visual
-
-    # Processa itens do checklist
-    cursor.execute("SELECT id, texto, concluido FROM itens_checklist WHERE nota_id = ? ORDER BY id ASC", (n_lista[0],))
-    itens = cursor.fetchall()
-    
-    total_itens = len(itens)
-    concluidos = sum(1 for item in itens if item[2] == 1)
-    progresso = int((concluidos / total_itens) * 100) if total_itens > 0 else 0
-
-    n_lista.append(itens)         # Índice 12: lista de tuplas (id, texto, concluido)
-    n_lista.append(progresso)     # Índice 13: % de progresso
-    n_lista.append(total_itens)   # Índice 14: total de itens
-    n_lista.append(concluidos)    # Índice 15: itens concluídos
-
-    return n_lista
-
+# ==============================================================================
+# SEÇÃO 4: ROTAS DA PÁGINA PRINCIPAL E DASHBOARD
+# ==============================================================================
 @app.route('/')
 def index():
     limpar_lixeira_automatica()
@@ -262,6 +279,9 @@ def index():
                            categoria_ativa=categoria_filtrada or 'Todas',
                            prioridade_ativa=prioridade_filtrada or 'Todas')
 
+# ==============================================================================
+# SEÇÃO 5: ROTAS DE GESTÃO E EDIÇÃO DE NOTAS
+# ==============================================================================
 @app.route('/adicionar', methods=['POST'])
 def adicionar():
     titulo = request.form.get('titulo')
@@ -272,124 +292,26 @@ def adicionar():
     vencimento = request.form.get('data_vencimento') or None
     aviso = request.form.get('dias_aviso') or None
 
-    conn = conectar_banco()
-    cursor = conn.cursor()
-    cursor.execute('''
-        INSERT INTO notas (titulo, conteudo, categoria, prioridade, tipo, data_vencimento, dias_aviso)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    ''', (titulo, conteudo, categoria, prioridade, tipo, vencimento, aviso))
-    
-    nota_id = cursor.lastrowid
-
-    # Se for do tipo checklist e contiver itens iniciais do formulário
-    itens_iniciais = request.form.getlist('itens_checklist[]')
-    for item_texto in itens_iniciais:
-        texto_limpo = item_texto.strip()
-        if texto_limpo:
-            cursor.execute("INSERT INTO itens_checklist (nota_id, texto) VALUES (?, ?)", (nota_id, texto_limpo))
-
-    conn.commit()
-    conn.close()
-    return redirect(url_for('index'))
-
-@app.route('/adicionar_item_checklist/<int:nota_id>', methods=['POST'])
-def adicionar_item_checklist(nota_id):
-    texto = request.form.get('texto', '').strip()
-    if texto:
-        conn = conectar_banco()
+    with conectar_banco() as conn:
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO itens_checklist (nota_id, texto) VALUES (?, ?)", (nota_id, texto))
-        conn.commit()
-        conn.close()
-    return redirect(request.referrer or url_for('index'))
-
-@app.route('/toggle_item_checklist/<int:item_id>', methods=['POST'])
-def toggle_item_checklist(item_id):
-    conn = conectar_banco()
-    cursor = conn.cursor()
-    cursor.execute("UPDATE itens_checklist SET concluido = NOT concluido WHERE id = ?", (item_id,))
-    conn.commit()
-    
-    cursor.execute("SELECT concluido, nota_id FROM itens_checklist WHERE id = ?", (item_id,))
-    item = cursor.fetchone()
-    
-    novo_status = bool(item[0]) if item else False
-    nota_id = item[1] if item else None
-
-    # Recalcula a contagem e a porcentagem de conclusão
-    progresso = 0
-    total = 0
-    concluidos = 0
-    if nota_id:
-        cursor.execute("SELECT id, concluido FROM itens_checklist WHERE nota_id = ?", (nota_id,))
-        itens = cursor.fetchall()
-        total = len(itens)
-        concluidos = sum(1 for i in itens if i[1] == 1)
-        progresso = int((concluidos / total) * 100) if total > 0 else 0
-
-    conn.close()
-    return jsonify({
-        'success': True, 
-        'concluido': novo_status, 
-        'progresso': progresso,
-        'total': total,
-        'concluidos': concluidos
-    })
-
-@app.route('/deletar_item_checklist/<int:item_id>', methods=['POST', 'GET'])
-def deletar_item_checklist(item_id):
-    conn = conectar_banco()
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM itens_checklist WHERE id = ?", (item_id,))
-    conn.commit()
-    conn.close()
-    return redirect(request.referrer or url_for('index'))
-
-@app.route('/adicionar_categoria', methods=['POST'])
-def adicionar_categoria():
-    nome = request.form['nome'].strip()
-    emoji = request.form['emoji'].strip()
-    
-    if nome:
-        conn = conectar_banco()
-        cursor = conn.cursor()
-        try:
-            cursor.execute("INSERT INTO categorias (nome, emoji) VALUES (?, ?)", (nome, emoji))
-            conn.commit()
-        except sqlite3.IntegrityError:
-            pass
-        conn.close()
+        cursor.execute('''
+            INSERT INTO notas (titulo, conteudo, categoria, prioridade, tipo, data_vencimento, dias_aviso)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (titulo, conteudo, categoria, prioridade, tipo, vencimento, aviso))
         
+        nota_id = cursor.lastrowid
+
+        # Se for checklist, insere os itens iniciais informados
+        itens_iniciais = request.form.getlist('itens_checklist[]')
+        for item_texto in itens_iniciais:
+            texto_limpo = item_texto.strip()
+            if texto_limpo:
+                cursor.execute("INSERT INTO itens_checklist (nota_id, texto) VALUES (?, ?)", (nota_id, texto_limpo))
+
+        conn.commit()
+
     return redirect(url_for('index'))
 
-@app.route('/excluir_categoria/<int:id>')
-def excluir_categoria(id):
-    conn = conectar_banco()
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM categorias WHERE id = ?", (id,))
-    conn.commit()
-    conn.close()
-    return redirect(url_for('index'))
-
-@app.route('/concluir/<int:id>')
-def concluir(id):
-    conn = conectar_banco()
-    cursor = conn.cursor()
-    concluido = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    cursor.execute("UPDATE notas SET status = 'Concluido', data_criacao = ? WHERE id = ?", (concluido, id))
-    conn.commit()
-    conn.close()
-    return redirect(url_for('index'))
-
-@app.route('/restaurar/<int:id>')
-def restaurar(id):
-    conn = conectar_banco()
-    cursor = conn.cursor()
-    restaurado = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    cursor.execute("UPDATE notas SET status = 'Ativo', data_criacao = ? WHERE id = ?", (restaurado, id))
-    conn.commit()
-    conn.close()
-    return redirect(url_for('concluidas'))
 
 @app.route('/editar/<int:id>', methods=['GET', 'POST'])
 def editar(id):
@@ -424,6 +346,111 @@ def editar(id):
     conn.close()
     return render_template('editar.html', nota=nota, categorias=lista_categorias)
 
+
+@app.route('/concluir/<int:id>')
+def concluir(id):
+    with conectar_banco() as conn:
+        cursor = conn.cursor()
+        concluido = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        cursor.execute("UPDATE notas SET status = 'Concluido', data_criacao = ? WHERE id = ?", (concluido, id))
+        conn.commit()
+    return redirect(url_for('index'))
+
+
+@app.route('/restaurar/<int:id>')
+def restaurar(id):
+    with conectar_banco() as conn:
+        cursor = conn.cursor()
+        restaurado = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        cursor.execute("UPDATE notas SET status = 'Ativo', data_criacao = ? WHERE id = ?", (restaurado, id))
+        conn.commit()
+    return redirect(url_for('concluidas'))
+
+# ==============================================================================
+# SEÇÃO 6: ROTAS DE GERENCIAMENTO DE CHECKLIST (AJAX E ITENS)
+# ==============================================================================
+@app.route('/adicionar_item_checklist/<int:nota_id>', methods=['POST'])
+def adicionar_item_checklist(nota_id):
+    texto = request.form.get('texto', '').strip()
+    if texto:
+        with conectar_banco() as conn:
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO itens_checklist (nota_id, texto) VALUES (?, ?)", (nota_id, texto))
+            conn.commit()
+    return redirect(request.referrer or url_for('index'))
+
+
+@app.route('/toggle_item_checklist/<int:item_id>', methods=['POST'])
+def toggle_item_checklist(item_id):
+    with conectar_banco() as conn:
+        cursor = conn.cursor()
+        cursor.execute("UPDATE itens_checklist SET concluido = NOT concluido WHERE id = ?", (item_id,))
+        conn.commit()
+        
+        cursor.execute("SELECT concluido, nota_id FROM itens_checklist WHERE id = ?", (item_id,))
+        item = cursor.fetchone()
+        
+        novo_status = bool(item[0]) if item else False
+        nota_id = item[1] if item else None
+
+        progresso = 0
+        total = 0
+        concluidos = 0
+        if nota_id:
+            cursor.execute("SELECT id, concluido FROM itens_checklist WHERE nota_id = ?", (nota_id,))
+            itens = cursor.fetchall()
+            total = len(itens)
+            concluidos = sum(1 for i in itens if i[1] == 1)
+            progresso = int((concluidos / total) * 100) if total > 0 else 0
+
+    return jsonify({
+        'success': True, 
+        'concluido': novo_status, 
+        'progresso': progresso,
+        'total': total,
+        'concluidos': concluidos
+    })
+
+
+@app.route('/deletar_item_checklist/<int:item_id>', methods=['POST', 'GET'])
+def deletar_item_checklist(item_id):
+    with conectar_banco() as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM itens_checklist WHERE id = ?", (item_id,))
+        conn.commit()
+    return redirect(request.referrer or url_for('index'))
+
+# ==============================================================================
+# SEÇÃO 7: ROTAS DE CATEGORIAS
+# ==============================================================================
+@app.route('/adicionar_categoria', methods=['POST'])
+def adicionar_categoria():
+    nome = request.form['nome'].strip()
+    emoji = request.form['emoji'].strip()
+    
+    if nome:
+        with conectar_banco() as conn:
+            cursor = conn.cursor()
+            try:
+                cursor.execute("INSERT INTO categorias (nome, emoji) VALUES (?, ?)", (nome, emoji))
+                conn.commit()
+            except sqlite3.IntegrityError:
+                pass
+        
+    return redirect(url_for('index'))
+
+
+@app.route('/excluir_categoria/<int:id>')
+def excluir_categoria(id):
+    with conectar_banco() as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM categorias WHERE id = ?", (id,))
+        conn.commit()
+    return redirect(url_for('index'))
+
+# ==============================================================================
+# SEÇÃO 8: HISTÓRICO, LIXEIRA E EXCLUSÃO PERMANENTE
+# ==============================================================================
 @app.route('/concluidas')
 def concluidas():
     conn = conectar_banco()
@@ -433,9 +460,10 @@ def concluidas():
     hoje = date.today()
 
     notas_processadas = [carregar_detalhes_nota(n, cursor, hoje) for n in notas]
-
     conn.close()
+
     return render_template('concluidas.html', notas=notas_processadas)
+
 
 @app.route('/lixeira')
 def lixeira():
@@ -459,42 +487,92 @@ def lixeira():
     conn.close()
     return render_template('lixeira.html', notas=notas_processadas)
 
-@app.route('/restaurar_lixeira/<int:id>')
-def restaurar_lixeira(id):
-    conn = conectar_banco()
-    cursor = conn.cursor()
-    cursor.execute("UPDATE notas SET status = 'Ativo', data_exclusao = NULL WHERE id = ?", (id,))
-    conn.commit()
-    conn.close()
-    return redirect(url_for('lixeira'))
 
 @app.route('/deletar_lixeira/<int:id>')
 def deletar_lixeira(id):
-    conn = conectar_banco()
-    cursor = conn.cursor()
-    data_hoje = datetime.now().strftime('%Y-%m-%d')
-    cursor.execute("UPDATE notas SET status = 'lixeira', data_exclusao = ? WHERE id = ?", (data_hoje, id))
-    conn.commit()
-    conn.close()
+    with conectar_banco() as conn:
+        cursor = conn.cursor()
+        data_hoje = datetime.now().strftime('%Y-%m-%d')
+        cursor.execute("UPDATE notas SET status = 'lixeira', data_exclusao = ? WHERE id = ?", (data_hoje, id))
+        conn.commit()
     return redirect(url_for('index'))
+
+
+@app.route('/restaurar_lixeira/<int:id>')
+def restaurar_lixeira(id):
+    with conectar_banco() as conn:
+        cursor = conn.cursor()
+        cursor.execute("UPDATE notas SET status = 'Ativo', data_exclusao = NULL WHERE id = ?", (id,))
+        conn.commit()
+    return redirect(url_for('lixeira'))
+
 
 @app.route('/excluir_definitivo/<int:id>')
 def excluir_definitivo(id):
-    conn = conectar_banco()
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM notas WHERE id = ?", (id,))
-    conn.commit()
-    conn.close()
+    with conectar_banco() as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM notas WHERE id = ?", (id,))
+        conn.commit()
     return redirect(url_for('lixeira'))
+
 
 @app.route('/esvaziar_lixeira')
 def esvaziar_lixeira():
-    conn = conectar_banco()
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM notas WHERE status = 'lixeira'")
-    conn.commit()
-    conn.close()
+    with conectar_banco() as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM notas WHERE status = 'lixeira'")
+        conn.commit()
     return redirect(url_for('lixeira'))
 
+# ==============================================================================
+# SEÇÃO 9: CALENDÁRIO E API REST
+# ==============================================================================
+@app.route('/calendario')
+def calendario():
+    return render_template('calendario.html')
+
+
+@app.route('/api/eventos')
+def api_eventos():
+    with conectar_banco() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT id, titulo, data_vencimento, prioridade, status, tipo, categoria 
+            FROM notas 
+            WHERE data_vencimento IS NOT NULL AND data_vencimento != '' AND status != 'lixeira'
+        """)
+        notas = cursor.fetchall()
+
+    eventos = []
+    for n in notas:
+        nota_id, titulo, vencimento, prioridade, status, tipo, categoria = n
+        
+        if status == 'Concluido':
+            cor = '#64748b'
+        elif prioridade == 'Alta':
+            cor = '#ef4444'
+        elif prioridade == 'Média':
+            cor = '#f59e0b'
+        else:
+            cor = '#10b981'
+
+        icone = "☑️ " if tipo == "checklist" else "📝 "
+        cat_prefix = f"[{categoria}] " if categoria else ""
+
+        eventos.append({
+            'id': nota_id,
+            'title': f"{icone}{cat_prefix}{titulo}",
+            'start': vencimento,
+            'backgroundColor': cor,
+            'borderColor': cor,
+            'textColor': '#ffffff'
+        })
+
+    return jsonify(eventos)
+
+
+# ==============================================================================
+# EXECUÇÃO DO SERVIDOR
+# ==============================================================================
 if __name__ == "__main__":
     app.run(debug=True)

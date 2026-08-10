@@ -1,105 +1,81 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
-    <meta charset="UTF-8 Mirror">
-    <title>Histórico de Concluídas</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Concluídas - Painel Pessoal</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-
-
-
-    <button class="btn-dark-toggle" id="darkToggle">🌙 Modo Escuro</button>
-
-    <script>
-        // 1. CAPTURA DO ELEMENTO
-        // O 'document.getElementById' vai até o HTML e localiza o botão que criamos acima usando o ID "darkToggle".
-        // O 'const' cria uma variável (um contêiner) imutável para guardar essa referência.
-        const darkToggle = document.getElementById('darkToggle');
-        
-        // 2. VERIFICAÇÃO DE PREFERÊNCIA SALVA (PERSISTÊNCIA)
-        // O 'localStorage' é uma pequena memória que o navegador disponibiliza para o seu site.
-        // Aqui perguntamos: "O usuário já tinha deixado o tema como 'dark' antes?"
-        if (localStorage.getItem('theme') === 'dark') {
-            
-            // Se sim, vamos na tag <body> da página (document.body) e adicionamos (.classList.add) a classe 'dark-mode'.
-            // Isso faz com que o CSS que explicamos lá em cima entre em ação imediatamente.
-            document.body.classList.add('dark-mode');
-            
-            // Mudamos o texto escrito dentro do botão (.innerText) para sugerir a volta ao modo claro.
-            darkToggle.innerText = '☀️ Modo Claro';
-        }
-
-        // 3. OUVIDO DE EVENTOS (EVENT LISTENER)
-        // Aqui dizemos ao botão: "Fique escutando/esperando o usuário fazer uma ação".
-        // O primeiro argumento é 'click' (a ação) e o segundo é a função (o que fazer quando clicar).
-        // O símbolo '()' seguido por '=>' é chamado de Arrow Function (uma forma moderna de escrever funções em JS).
-        darkToggle.addEventListener('click', () => {
-            
-            // O '.toggle' é fantástico! Ele funciona como um interruptor de lâmpada:
-            // Se a classe 'dark-mode' NÃO existir no <body>, ele a ADICIONA.
-            // Se a classe 'dark-mode' JÁ EXISTIR no <body>, ele a REMOVE.
-            document.body.classList.toggle('dark-mode');
-            
-            // 4. ATUALIZAÇÃO DO STATUS E DA MEMÓRIA
-            // Agora fazemos um teste usando um 'if' (se) para saber o estado atual após o clique:
-            // O '.contains' verifica: "A tag body está com a classe 'dark-mode' ativa agora?"
-            if (document.body.classList.contains('dark-mode')) {
-                
-                // Se estiver ativa, salvamos no localStorage a chave 'theme' com o valor 'dark'.
-                // Assim, quando o usuário mudar de página ou recarregar, o site lembrará dessa escolha.
-                localStorage.setItem('theme', 'dark');
-                
-                // Mudamos o texto do botão para o Sol.
-                darkToggle.innerText = '☀️ Modo Claro';
-                
-            } else {
-                // Caso contrário (se o usuário acabou de desativar o modo escuro):
-                
-                // Atualizamos a memória do navegador dizendo que o tema agora é 'light' (claro).
-                localStorage.setItem('theme', 'light');
-                
-                // Mudamos o texto do botão de volta para a Lua.
-                darkToggle.innerText = '🌙 Modo Escuro';
-            }
-        });
-    </script>
-
-
-
-    <div class="container">
-        <a href="/" class="btn-voltar">⬅️ Voltar ao Painel Principal</a>
-        
-        <h2 style="text-align: center;">✅ Histórico de Notas Concluídas</h2>
-        <p style="text-align: center; color: #666;">Estas são as tarefas que você já finalizou.</p>
-
-        <div class="notas-container">
-            {% for n in notas %}
-            <div class="nota-card" style="border-left: 5px solid #28a745; padding: 15px; margin-bottom: 15px;">
+    <div class="app-container">
+        <!-- Cabeçalho -->
+        <header class="main-header">
+            <div class="header-content">
                 <div>
-                    <strong style="font-size: 1.1em;">{{ n[1] }}</strong>
-                    <p style="margin: 8px 0; color: #444;">{{ n[2] }}</p>
-                    <div style="margin-bottom: 12px;">
-                        <small style="color: #666; background: #eee; padding: 2px 6px; border-radius: 3px;">
-                            Categoria: {{ n[3] }}
-                        </small>
+                    <h1>✅ Histórico de Concluídas</h1>
+                    <p class="lixeira-header-info">
+                        Estas são as tarefas que você já finalizou com sucesso.
+                    </p>
+                </div>
+                <div class="header-actions">
+                    <button id="theme-toggle" class="btn-theme" title="Alternar Tema">🌙</button>
+                    <a href="{{ url_for('index') }}" class="btn-nav">📌 Painel Principal</a>
+                </div>
+            </div>
+        </header>
+
+        <!-- Grid de Notas Concluídas -->
+        <div class="notas-grid">
+            {% for n in notas %}
+                <div class="nota-card concluida">
+                    <div>
+                        <div class="nota-header">
+                            <span class="badge-cat">{{ n[3] }}</span>
+                        </div>
+                        
+                        <h3 class="nota-titulo">{{ n[1] }}</h3>
+                        <p class="nota-conteudo">{{ n[2] or '' }}</p>
+                        
                         {% if n[7] %}
-                        <small style="color: #666; background: #eee; padding: 2px 6px; border-radius: 3px; margin-left: 5px;">
-                            Vencimento original: {{ n[7] }}
-                        </small>
+                            <div class="nota-vencimento">
+                                📅 Vencimento original: {{ n[7] }}
+                            </div>
                         {% endif %}
                     </div>
-                </div>
 
-                <a href="/restaurar/{{ n[0] }}" 
-                   style="text-decoration: none; background: #007bff; color: white; padding: 6px 12px; border-radius: 4px; font-size: 0.85em; font-weight: bold; display: inline-block; transition: background 0.2s;"
-                   onmouseover="this.style.background='#0056b3'"
-                   onmouseout="this.style.background='#007bff'">
-                   ↩️ Restaurar Nota
-                </a>
-            </div>
+                    <div class="nota-footer">
+                        <a href="{{ url_for('restaurar', id=n[0]) }}" class="btn-acao btn-concluir">
+                            ↩️ Restaurar para o Painel
+                        </a>
+                    </div>
+                </div>
+            {% else %}
+                <p class="sem-notas">Nenhuma nota concluída por aqui ainda! 🎯</p>
             {% endfor %}
         </div>
     </div>
+
+    <script>
+        // Alternador de Modo Escuro
+        const themeBtn = document.getElementById('theme-toggle');
+        const currentTheme = localStorage.getItem('theme');
+
+        if (currentTheme === 'dark') {
+            document.body.classList.add('dark-mode');
+            themeBtn.innerText = '☀️';
+        }
+
+        themeBtn.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            let theme = 'light';
+            if (document.body.classList.contains('dark-mode')) {
+                theme = 'dark';
+                themeBtn.innerText = '☀️';
+            } else {
+                themeBtn.innerText = '🌙';
+            }
+            localStorage.setItem('theme', theme);
+        });
+    </script>
 </body>
 </html>

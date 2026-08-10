@@ -1,102 +1,112 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Editar Nota</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editar Anotação - Painel Pessoal</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+    <div class="app-container">
+        <!-- Cabeçalho -->
+        <header class="main-header">
+            <div class="header-content">
+                <h1>✏️ Editar Anotação</h1>
+                <div class="header-actions">
+                    <button id="theme-toggle" class="btn-theme" title="Alternar Tema">🌙</button>
+                    <a href="{{ url_for('calendario') }}" class="btn-nav">📅 Calendário</a>
+                    <a href="{{ url_for('index') }}" class="btn-nav">📌 Painel Principal</a>
+                </div>
+            </div>
+        </header>
 
-    <button class="btn-dark-toggle" id="darkToggle">🌙 Modo Escuro</button>
+        <main class="edit-container">
+            <div class="card-form">
+                <h2>Editar "{{ nota[1] }}"</h2>
+                
+                <form action="{{ url_for('editar', id=nota[0]) }}" method="POST">
+                    <div class="form-group">
+                        <label for="titulo">Título:</label>
+                        <input type="text" name="titulo" id="titulo" value="{{ nota[1] }}" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="tipo">Tipo de Nota:</label>
+                        <select name="tipo" id="tipo">
+                            <option value="texto" {% if nota[5] == 'texto' %}selected{% endif %}>📝 Texto Livre</option>
+                            <option value="checklist" {% if nota[5] == 'checklist' %}selected{% endif %}>☑️ Checklist / Lista</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="conteudo">Conteúdo / Descrição:</label>
+                        <textarea name="conteudo" id="conteudo" rows="4">{{ nota[2] or '' }}</textarea>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="categoria">Categoria:</label>
+                            <select name="categoria" id="categoria">
+                                {% for cat in categorias %}
+                                    <option value="{{ cat[1] }}" {% if nota[3] == cat[1] %}selected{% endif %}>
+                                        {{ cat[2] }} {{ cat[1] }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="prioridade">Prioridade:</label>
+                            <select name="prioridade" id="prioridade">
+                                <option value="Baixa" {% if nota[4] == 'Baixa' %}selected{% endif %}>🟢 Baixa</option>
+                                <option value="Média" {% if nota[4] == 'Média' %}selected{% endif %}>🟡 Média</option>
+                                <option value="Alta" {% if nota[4] == 'Alta' %}selected{% endif %}>🔴 Alta</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="data_vencimento">Vencimento:</label>
+                            <input type="date" name="data_vencimento" id="data_vencimento" value="{{ nota[7] or '' }}">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="dias_aviso">Aviso (dias):</label>
+                            <input type="number" name="dias_aviso" id="dias_aviso" value="{{ nota[8] or 3 }}" min="1" max="30">
+                        </div>
+                    </div>
+
+                    <div class="form-actions-row">
+                        <button type="submit" class="btn-principal">💾 Salvar Alterações</button>
+                        <a href="{{ url_for('calendario') }}" class="btn-secundario">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        </main>
+    </div>
 
     <script>
-        // 1. CAPTURA DO ELEMENTO
-        // O 'document.getElementById' vai até o HTML e localiza o botão que criamos acima usando o ID "darkToggle".
-        // O 'const' cria uma variável (um contêiner) imutável para guardar essa referência.
-        const darkToggle = document.getElementById('darkToggle');
-        
-        // 2. VERIFICAÇÃO DE PREFERÊNCIA SALVA (PERSISTÊNCIA)
-        // O 'localStorage' é uma pequena memória que o navegador disponibiliza para o seu site.
-        // Aqui perguntamos: "O usuário já tinha deixado o tema como 'dark' antes?"
-        if (localStorage.getItem('theme') === 'dark') {
-            
-            // Se sim, vamos na tag <body> da página (document.body) e adicionamos (.classList.add) a classe 'dark-mode'.
-            // Isso faz com que o CSS que explicamos lá em cima entre em ação imediatamente.
+        // Alternador de Modo Escuro
+        const themeBtn = document.getElementById('theme-toggle');
+        const currentTheme = localStorage.getItem('theme');
+
+        if (currentTheme === 'dark') {
             document.body.classList.add('dark-mode');
-            
-            // Mudamos o texto escrito dentro do botão (.innerText) para sugerir a volta ao modo claro.
-            darkToggle.innerText = '☀️ Modo Claro';
+            themeBtn.innerText = '☀️';
         }
 
-        // 3. OUVIDO DE EVENTOS (EVENT LISTENER)
-        // Aqui dizemos ao botão: "Fique escutando/esperando o usuário fazer uma ação".
-        // O primeiro argumento é 'click' (a ação) e o segundo é a função (o que fazer quando clicar).
-        // O símbolo '()' seguido por '=>' é chamado de Arrow Function (uma forma moderna de escrever funções em JS).
-        darkToggle.addEventListener('click', () => {
-            
-            // O '.toggle' é fantástico! Ele funciona como um interruptor de lâmpada:
-            // Se a classe 'dark-mode' NÃO existir no <body>, ele a ADICIONA.
-            // Se a classe 'dark-mode' JÁ EXISTIR no <body>, ele a REMOVE.
+        themeBtn.addEventListener('click', () => {
             document.body.classList.toggle('dark-mode');
-            
-            // 4. ATUALIZAÇÃO DO STATUS E DA MEMÓRIA
-            // Agora fazemos um teste usando um 'if' (se) para saber o estado atual após o clique:
-            // O '.contains' verifica: "A tag body está com a classe 'dark-mode' ativa agora?"
+            let theme = 'light';
             if (document.body.classList.contains('dark-mode')) {
-                
-                // Se estiver ativa, salvamos no localStorage a chave 'theme' com o valor 'dark'.
-                // Assim, quando o usuário mudar de página ou recarregar, o site lembrará dessa escolha.
-                localStorage.setItem('theme', 'dark');
-                
-                // Mudamos o texto do botão para o Sol.
-                darkToggle.innerText = '☀️ Modo Claro';
-                
+                theme = 'dark';
+                themeBtn.innerText = '☀️';
             } else {
-                // Caso contrário (se o usuário acabou de desativar o modo escuro):
-                
-                // Atualizamos a memória do navegador dizendo que o tema agora é 'light' (claro).
-                localStorage.setItem('theme', 'light');
-                
-                // Mudamos o texto do botão de volta para a Lua.
-                darkToggle.innerText = '🌙 Modo Escuro';
+                themeBtn.innerText = '🌙';
             }
+            localStorage.setItem('theme', theme);
         });
     </script>
-
-
-    <div class="form-container">
-        <h2>✏️ Editar Anotação</h2>
-        <form method="POST">
-            <input type="text" name="titulo" value="{{ nota[1] }}" required>
-            <textarea name="conteudo" rows="3">{{ nota[2] }}</textarea>
-            
-            <select name="categoria" required>
-                {% for categoria in categorias %}
-                    <option value="{{ categoria[1] }}" {% if nota[3] == categoria[1] %}selected{% endif %}>
-                        {{ categoria[2] }} {{ categoria[1] }}
-                    </option>
-                {% endfor %}
-            </select>
-
-            <select name="prioridade">
-                <option value="Baixa" {% if nota[4] == 'Baixa' %}selected{% endif %}>Baixa</option>
-                <option value="Média" {% if nota[4] == 'Média' %}selected{% endif %}>Média</option>
-                <option value="Alta" {% if nota[4] == 'Alta' %}selected{% endif %}>Alta</option>
-            </select>
-
-            <select name="tipo">
-                <option value="Nota" {% if nota[5] == 'Nota' %}selected{% endif %}>📝 Nota</option>
-                <option value="Lembrete" {% if nota[5] == 'Lembrete' %}selected{% endif %}>⏰ Lembrete</option>
-            </select>
-
-            <label style="font-size: 0.8em; color: #666;">Vencimento:</label>
-            <input type="date" name="data_vencimento" value="{{ nota[7] }}">
-            
-            <label style="font-size: 0.8em; color: #666;">Avisar quantos dias antes?</label>
-            <input type="number" name="dias_aviso" value="{{ nota[8] }}">
-            <button type="submit" class="btn-salvar">Salvar Alterações</button>
-            <a href="/" class="btn-cancelar">Cancelar</a>
-        </form>
-    </div>
 </body>
 </html>
