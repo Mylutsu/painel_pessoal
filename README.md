@@ -70,9 +70,3 @@ Uma aplicação web completa para gestão de tarefas, notas e compromissos finan
    python app.py
    ```
    Acesse a aplicação no navegador em `http://127.0.0.1:5000`.
-
----
-
-## 📄 Licença
-
-Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
