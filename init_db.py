@@ -1,54 +1,67 @@
 import sqlite3
 
-def conectar():
-    return sqlite3.connect('painel_dados.db')
+def inicializar_banco():
+    conn = sqlite3.connect('painel_dados.db')
+    cursor = conn.cursor()
 
-def criar_estrutura():
-    conexao = conectar()
-    cursor = conexao.cursor()
+    # Habilita a verificação de Chaves Estrangeiras no SQLite
+    cursor.execute("PRAGMA foreign_keys = ON;")
 
-    #limpar tabelas caso necessário
-    cursor.execute("DROP TABLE IF EXISTS notas")
-    cursor.execute("DROP TABLE IF EXISTS categorias")
+    # 1. Tabela de Categorias
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS categorias (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nome TEXT UNIQUE NOT NULL,
+            emoji TEXT DEFAULT '📁'
+        )
+    ''')
 
-    # Criando a tabela de anotações e lembretes
+    # 2. Tabela de Notas
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS notas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             titulo TEXT NOT NULL,
             conteudo TEXT,
-            categoria TEXT, -- Ex: Estudo, Financeiro, Trabalho
-            prioridade TEXT, -- Ex: Alta, Média, Baixa
-            tipo TEXT, -- Ex: Nota ou Lembrete
-            data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            data_vencimento DATE, -- Para os lembretes de conta
-            dias_aviso INTEGER, -- Quantos dias antes avisar
-            status TEXT DEFAULT 'Ativo', -- Ex: Ativo ou Concluído
-            data_exclusao DATE -- Dia que uma nota foi excluída
+            categoria TEXT,
+            prioridade TEXT DEFAULT 'Média',
+            tipo TEXT DEFAULT 'texto',
+            data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP,
+            data_vencimento TEXT,
+            dias_aviso INTEGER DEFAULT 3,
+            status TEXT DEFAULT 'Ativo',
+            data_exclusao TEXT
         )
     ''')
 
-    #Nova tabela para categorias
+    # 3. Nova Tabela: Itens do Checklist
     cursor.execute('''
-        CREATE TABLE categorias (
+        CREATE TABLE IF NOT EXISTS itens_checklist (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nome TEXT NOT NULL UNIQUE,
-            emoji TEXT
+            nota_id INTEGER NOT NULL,
+            texto TEXT NOT NULL,
+            concluido INTEGER DEFAULT 0,
+            FOREIGN KEY (nota_id) REFERENCES notas (id) ON DELETE CASCADE
         )
     ''')
-    # Inserir categorias padrão
+
+    # Categorias padrão
     categorias_padrao = [
         ('Estudo', '📚'),
         ('Financeiro', '💰'),
         ('Trabalho', '💼'),
         ('Pessoal', '🏠'),
-        ('Saúde', '⚕️')
+        ('Saúde', '🏥')
     ]
-    cursor.executemany('INSERT OR IGNORE INTO categorias (nome, emoji) VALUES (?, ?)', categorias_padrao)
 
-    conexao.commit()
-    conexao.close()
-    print("Banco de dados do Painel Pessoal configurado com sucesso!")
+    for nome, emoji in categorias_padrao:
+        try:
+            cursor.execute("INSERT INTO categorias (nome, emoji) VALUES (?, ?)", (nome, emoji))
+        except sqlite3.IntegrityError:
+            pass
+
+    conn.commit()
+    conn.close()
+    print("✅ Banco de dados e tabela de checklists inicializados com sucesso!")
 
 if __name__ == "__main__":
-    criar_estrutura()
+    inicializar_banco()

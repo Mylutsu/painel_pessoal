@@ -1,228 +1,340 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Meu Painel Pessoal</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Pessoal de Anotações</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+    <div class="app-container">
+        <!-- Cabeçalho -->
+        <header class="main-header">
+            <div class="header-content">
+                <h1>📌 Painel Pessoal</h1>
+                <div class="header-actions">
+                    <button id="theme-toggle" class="btn-theme" title="Alternar Tema">🌙</button>
+                    <a href="{{ url_for('concluidas') }}" class="btn-nav">✅ Concluídas ({{ concluidas_total }})</a>
+                    <a href="{{ url_for('lixeira') }}" class="btn-nav btn-lixeira-nav">🗑️ Lixeira</a>
+                </div>
+            </div>
+            
+            <!-- Dashboard de Métricas -->
+            <div class="dashboard-grid">
+                <div class="dash-card">
+                    <span class="dash-number">{{ total }}</span>
+                    <span class="dash-label">Notas Ativas</span>
+                </div>
+                <div class="dash-card alerta-card">
+                    <span class="dash-number">{{ alertas }}</span>
+                    <span class="dash-label">Em Alerta</span>
+                </div>
+                <div class="dash-card vencido-card">
+                    <span class="dash-number">{{ vencidas }}</span>
+                    <span class="dash-label">Vencidas</span>
+                </div>
+            </div>
+        </header>
 
-    <button class="btn-dark-toggle" id="darkToggle">🌙 Modo Escuro</button>
+        <main class="content-grid">
+            <!-- Coluna de Criação e Filtros -->
+            <aside class="sidebar">
+                <!-- Formulário de Nova Nota -->
+                <div class="card-form">
+                    <h2>Nova Anotação / Lista</h2>
+                    <form action="{{ url_for('adicionar') }}" method="POST">
+                        <input type="text" name="titulo" placeholder="Título da nota ou lista..." required>
+                        
+                        <div class="form-group">
+                            <label for="tipo">Tipo de Nota:</label>
+                            <select name="tipo" id="tipoSelect" onchange="alternarCamposTipo()">
+                                <option value="texto">📝 Texto Livre</option>
+                                <option value="checklist">☑️ Checklist / Lista</option>
+                            </select>
+                        </div>
+
+                        <div id="campoConteudo">
+                            <textarea name="conteudo" placeholder="Escreva os detalhes aqui..."></textarea>
+                        </div>
+
+                        <div id="campoChecklistInicial" style="display: none;">
+                            <label>Itens Iniciais (opcional):</label>
+                            <div id="containerItensIniciais">
+                                <input type="text" name="itens_checklist[]" placeholder="Item 1">
+                                <input type="text" name="itens_checklist[]" placeholder="Item 2">
+                            </div>
+                            <button type="button" class="btn-secundario" onclick="adicionarCampoInicial()">+ Outro Item</button>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="categoria">Categoria:</label>
+                                <select name="categoria" id="categoria">
+                                    {% for cat in categorias %}
+                                        <option value="{{ cat[1] }}">{{ cat[2] }} {{ cat[1] }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="prioridade">Prioridade:</label>
+                                <select name="prioridade" id="prioridade">
+                                    <option value="Baixa">🟢 Baixa</option>
+                                    <option value="Média" selected>🟡 Média</option>
+                                    <option value="Alta">🔴 Alta</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="data_vencimento">Vencimento:</label>
+                                <input type="date" name="data_vencimento" id="data_vencimento">
+                            </div>
+                            <div class="form-group">
+                                <label for="dias_aviso">Aviso (dias):</label>
+                                <input type="number" name="dias_aviso" id="dias_aviso" value="3" min="1" max="30">
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn-principal">Criar Nota</button>
+                    </form>
+                </div>
+
+                <!-- Gestão de Categorias -->
+                <div class="card-form">
+                    <h3>Gerenciar Categorias</h3>
+                    <form action="{{ url_for('adicionar_categoria') }}" method="POST" class="form-inline">
+                        <input type="text" name="emoji" placeholder="Emoji" style="width: 60px;" required>
+                        <input type="text" name="nome" placeholder="Nome da Categoria" required>
+                        <button type="submit" class="btn-secundario">+</button>
+                    </form>
+                    
+                    <ul class="lista-categorias">
+                        {% for cat in categorias %}
+                            <li>
+                                <span>{{ cat[2] }} {{ cat[1] }}</span>
+                                <a href="{{ url_for('excluir_categoria', id=cat[0]) }}" class="btn-deletar-cat" onclick="return confirm('Deseja excluir esta categoria?')">&times;</a>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </aside>
+
+            <!-- Coluna de Exibição das Notas -->
+            <section class="feed">
+                <!-- Barra de Busca e Filtros Avançados -->
+                <div class="filter-bar">
+                    <input type="text" id="buscaInput" placeholder="🔍 Buscar notas..." onkeyup="filtrarNotas()">
+                    
+                    <!-- Filtro de Categoria -->
+                    <div class="filter-group">
+                        <span class="filter-label">Categoria:</span>
+                        <div class="categorias-chips">
+                            <a href="{{ url_for('index', categoria='Todas', prioridade=prioridade_ativa) }}" class="chip {% if categoria_ativa == 'Todas' %}active{% endif %}">Todas</a>
+                            {% for cat in categorias %}
+                                <a href="{{ url_for('index', categoria=cat[1], prioridade=prioridade_ativa) }}" class="chip {% if categoria_ativa == cat[1] %}active{% endif %}">
+                                    {{ cat[2] }} {{ cat[1] }}
+                                </a>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Filtro de Prioridade -->
+                    <div class="filter-group">
+                        <span class="filter-label">Prioridade:</span>
+                        <div class="categorias-chips">
+                            <a href="{{ url_for('index', categoria=categoria_ativa, prioridade='Todas') }}" class="chip {% if prioridade_ativa == 'Todas' %}active{% endif %}">Todas</a>
+                            <a href="{{ url_for('index', categoria=categoria_ativa, prioridade='Alta') }}" class="chip {% if prioridade_ativa == 'Alta' %}active{% endif %}">🔴 Alta</a>
+                            <a href="{{ url_for('index', categoria=categoria_ativa, prioridade='Média') }}" class="chip {% if prioridade_ativa == 'Média' %}active{% endif %}">🟡 Média</a>
+                            <a href="{{ url_for('index', categoria=categoria_ativa, prioridade='Baixa') }}" class="chip {% if prioridade_ativa == 'Baixa' %}active{% endif %}">🟢 Baixa</a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seções Agrupadas por Prioridade -->
+                <div id="notasContainer">
+                    {% set tem_notas = notas | length > 0 %}
+
+                    {% if tem_notas %}
+                        {% for prio_nome, prio_icon in [('Alta', '🔴'), ('Média', '🟡'), ('Baixa', '🟢')] %}
+                            {% set ns = namespace(notas_prio=[]) %}
+                            {% for n in notas %}
+                                {% if n[4] == prio_nome %}
+                                    {% set ns.notas_prio = ns.notas_prio + [n] %}
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if ns.notas_prio | length > 0 %}
+                                <div class="priority-section">
+                                    <h3 class="priority-title">{{ prio_icon }} Prioridade {{ prio_nome }}</h3>
+                                    <div class="notas-grid">
+                                        {% for nota in ns.notas_prio %}
+                                            <div class="nota-card prioridade-{{ nota[4] | lower }} {{ nota[11] }}">
+                                                <div class="nota-header">
+                                                    <span class="badge-cat">{{ nota[3] or 'Geral' }}</span>
+                                                    <span class="badge-prio prio-{{ nota[4] | lower }}">{{ nota[4] }}</span>
+                                                </div>
+
+                                                <h3 class="nota-titulo">{{ nota[1] }}</h3>
+
+                                                {% if nota[5] == 'checklist' %}
+                                                    <div class="checklist-container">
+                                                        <div class="progress-info">
+                                                            <div class="progress-bar-bg">
+                                                                <div class="progress-bar-fill" id="progress-bar-{{ nota[0] }}" style="width: {{ nota[13] }}%;"></div>
+                                                            </div>
+                                                            <small id="progress-text-{{ nota[0] }}">{{ nota[15] }}/{{ nota[14] }} concluídos ({{ nota[13] }}%)</small>
+                                                        </div>
+
+                                                        <ul class="checklist-items" id="checklist-items-{{ nota[0] }}">
+                                                            {% for item in nota[12] %}
+                                                                <li class="checklist-item {% if item[2] %}completed{% endif %}">
+                                                                    <label>
+                                                                        <input type="checkbox" {% if item[2] %}checked{% endif %} onchange="toggleItemChecklist({{ item[0] }}, {{ nota[0] }}, this)">
+                                                                        <span class="item-texto">{{ item[1] }}</span>
+                                                                    </label>
+                                                                    <a href="{{ url_for('deletar_item_checklist', item_id=item[0]) }}" class="btn-del-item" title="Remover item">&times;</a>
+                                                                </li>
+                                                            {% endfor %}
+                                                        </ul>
+
+                                                        <form action="{{ url_for('adicionar_item_checklist', nota_id=nota[0]) }}" method="POST" class="add-item-card-form">
+                                                            <input type="text" name="texto" placeholder="+ Adicionar item..." required>
+                                                            <button type="submit">+</button>
+                                                        </form>
+                                                    </div>
+                                                {% else %}
+                                                    <p class="nota-conteudo">{{ nota[2] }}</p>
+                                                {% endif %}
+
+                                                {% if nota[7] %}
+                                                    <div class="nota-vencimento">
+                                                        📅 Vencimento: <strong>{{ nota[7] }}</strong>
+                                                    </div>
+                                                {% endif %}
+
+                                                <div class="nota-footer">
+                                                    <a href="{{ url_for('concluir', id=nota[0]) }}" class="btn-acao btn-concluir" title="Concluir Nota">✅ Concluir</a>
+                                                    <a href="{{ url_for('editar', id=nota[0]) }}" class="btn-acao btn-editar" title="Editar Nota">✏️ Editar</a>
+                                                    <a href="{{ url_for('deletar_lixeira', id=nota[0]) }}" class="btn-acao btn-excluir" title="Mover para Lixeira">🗑️ Lixeira</a>
+                                                </div>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <p class="sem-notas">Nenhuma anotação encontrada.</p>
+                    {% endif %}
+                </div>
+            </section>
+        </main>
+    </div>
 
     <script>
-        // 1. CAPTURA DO ELEMENTO
-        // O 'document.getElementById' vai até o HTML e localiza o botão que criamos acima usando o ID "darkToggle".
-        // O 'const' cria uma variável (um contêiner) imutável para guardar essa referência.
-        const darkToggle = document.getElementById('darkToggle');
-        
-        // 2. VERIFICAÇÃO DE PREFERÊNCIA SALVA (PERSISTÊNCIA)
-        // O 'localStorage' é uma pequena memória que o navegador disponibiliza para o seu site.
-        // Aqui perguntamos: "O usuário já tinha deixado o tema como 'dark' antes?"
-        if (localStorage.getItem('theme') === 'dark') {
-            
-            // Se sim, vamos na tag <body> da página (document.body) e adicionamos (.classList.add) a classe 'dark-mode'.
-            // Isso faz com que o CSS que explicamos lá em cima entre em ação imediatamente.
-            document.body.classList.add('dark-mode');
-            
-            // Mudamos o texto escrito dentro do botão (.innerText) para sugerir a volta ao modo claro.
-            darkToggle.innerText = '☀️ Modo Claro';
+        // Alternar visualização do formulário de criação
+        function alternarCamposTipo() {
+            const tipo = document.getElementById('tipoSelect').value;
+            const campoConteudo = document.getElementById('campoConteudo');
+            const campoChecklist = document.getElementById('campoChecklistInicial');
+
+            if (tipo === 'checklist') {
+                campoConteudo.style.display = 'none';
+                campoChecklist.style.display = 'block';
+            } else {
+                campoConteudo.style.display = 'block';
+                campoChecklist.style.display = 'none';
+            }
         }
 
-        // 3. OUVIDO DE EVENTOS (EVENT LISTENER)
-        // Aqui dizemos ao botão: "Fique escutando/esperando o usuário fazer uma ação".
-        // O primeiro argumento é 'click' (a ação) e o segundo é a função (o que fazer quando clicar).
-        // O símbolo '()' seguido por '=>' é chamado de Arrow Function (uma forma moderna de escrever funções em JS).
-        darkToggle.addEventListener('click', () => {
-            
-            // O '.toggle' é fantástico! Ele funciona como um interruptor de lâmpada:
-            // Se a classe 'dark-mode' NÃO existir no <body>, ele a ADICIONA.
-            // Se a classe 'dark-mode' JÁ EXISTIR no <body>, ele a REMOVE.
+        function adicionarCampoInicial() {
+            const container = document.getElementById('containerItensIniciais');
+            const novoInput = document.createElement('input');
+            novoInput.type = 'text';
+            novoInput.name = 'itens_checklist[]';
+            novoInput.placeholder = 'Próximo item...';
+            novoInput.style.marginTop = '6px';
+            container.appendChild(novoInput);
+        }
+
+        // Alternar checkbox assincronamente sem dar refresh na página
+        function toggleItemChecklist(itemId, notaId, checkbox) {
+            const li = checkbox.closest('.checklist-item');
+
+            fetch(`/toggle_item_checklist/${itemId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    if (data.concluido) {
+                        li.classList.add('completed');
+                    } else {
+                        li.classList.remove('completed');
+                    }
+
+                    // 1. Atualiza a largura da barra de progresso
+                    const progressBar = document.getElementById(`progress-bar-${notaId}`);
+                    if (progressBar) {
+                        progressBar.style.width = `${data.progresso}%`;
+                    }
+
+                    // 2. Atualiza o texto da contagem e da porcentagem
+                    const progressText = document.getElementById(`progress-text-${notaId}`);
+                    if (progressText) {
+                        progressText.textContent = `${data.concluidos}/${data.total} concluídos (${data.progresso}%)`;
+                    }
+                }
+            })
+            .catch(err => console.error('Erro ao alternar item:', err));
+        }
+
+        // Busca em tempo real no front-end por seções
+        function filtrarNotas() {
+            const termo = document.getElementById('buscaInput').value.toLowerCase();
+            const sections = document.querySelectorAll('.priority-section');
+
+            sections.forEach(section => {
+                const cards = section.querySelectorAll('.nota-card');
+                let visiveisNaSecao = 0;
+
+                cards.forEach(card => {
+                    const texto = card.innerText.toLowerCase();
+                    if (texto.includes(termo)) {
+                        card.style.display = 'flex';
+                        visiveisNaSecao++;
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+
+                // Oculta a seção inteira se não houver notas correspondentes à busca
+                section.style.display = visiveisNaSecao > 0 ? 'block' : 'none';
+            });
+        }
+
+        // Alternador de Modo Escuro com LocalStorage
+        const themeBtn = document.getElementById('theme-toggle');
+        const currentTheme = localStorage.getItem('theme');
+
+        if (currentTheme === 'dark') {
+            document.body.classList.add('dark-mode');
+            themeBtn.innerText = '☀️';
+        }
+
+        themeBtn.addEventListener('click', () => {
             document.body.classList.toggle('dark-mode');
-            
-            // 4. ATUALIZAÇÃO DO STATUS E DA MEMÓRIA
-            // Agora fazemos um teste usando um 'if' (se) para saber o estado atual após o clique:
-            // O '.contains' verifica: "A tag body está com a classe 'dark-mode' ativa agora?"
+            let theme = 'light';
             if (document.body.classList.contains('dark-mode')) {
-                
-                // Se estiver ativa, salvamos no localStorage a chave 'theme' com o valor 'dark'.
-                // Assim, quando o usuário mudar de página ou recarregar, o site lembrará dessa escolha.
-                localStorage.setItem('theme', 'dark');
-                
-                // Mudamos o texto do botão para o Sol.
-                darkToggle.innerText = '☀️ Modo Claro';
-                
+                theme = 'dark';
+                themeBtn.innerText = '☀️';
             } else {
-                // Caso contrário (se o usuário acabou de desativar o modo escuro):
-                
-                // Atualizamos a memória do navegador dizendo que o tema agora é 'light' (claro).
-                localStorage.setItem('theme', 'light');
-                
-                // Mudamos o texto do botão de volta para a Lua.
-                darkToggle.innerText = '🌙 Modo Escuro';
+                themeBtn.innerText = '🌙';
             }
+            localStorage.setItem('theme', theme);
         });
     </script>
-
-    <div class="form-container">
-        <h2>📌 Nova Anotação</h2>
-        <form action="/adicionar" method="POST">
-            
-            <input type="text" name="titulo" placeholder="Título da nota" required>
-            
-            <textarea name="conteudo" rows="3" placeholder="Escreva os detalhes aqui..."></textarea>
-            
-            <select name="categoria" required>
-                {% for categoria in categorias %}
-                    <option value="{{ categoria[1] }}">{{ categoria[2] }} {{ categoria[1] }}</option>
-                {% endfor %}
-            </select>
-
-            <select name="prioridade">
-                <option value="Baixa">Prioridade: Baixa</option>
-                <option value="Média" selected>Prioridade: Média</option>
-                <option value="Alta">Prioridade: Alta</option>
-            </select>
-
-            <select name="tipo">
-                <option value="Nota">📝 Apenas Nota</option>
-                <option value="Lembrete">⏰ Lembrete (Com Prazo)</option>
-            </select>
-
-            <label style="font-size: 0.8em; color: #666;">Data de Vencimento (se houver):</label>
-            <input type="date" name="data_vencimento">
-            
-            <input type="number" name="dias_aviso" placeholder="Avisar quantos dias antes?">
-
-            <button type="submit">Salvar no Painel</button>
-        </form>
-    </div>
-
-    <div class="form-container" style="margin-top: 10px; background: #fdfdfd; border: 1px dashed #ccc;">
-        <h3 style="margin-top: 0;">🛠️ Cadastrar Nova Categoria</h3>
-        <form action="/adicionar_categoria" method="POST" style="display: flex; gap: 10px; align-items: center; margin-bottom: 15px;">
-            <input type="text" name="emoji" placeholder="Emoji (ex: 🚀)" style="width: 30%; margin: 0;" required>
-            <input type="text" name="nome" placeholder="Nome (ex: Faculdade)" style="width: 50%; margin: 0;" required>
-            <button type="submit" style="width: 20%; padding: 10px; background: #007bff; margin: 0;">+</button>
-        </form>
-
-        <div style="display: flex; flex-wrap: wrap; gap: 8px; border-top: 1px solid #eee; padding-top: 10px;">
-            {% for categoria in categorias %}
-                <div class="categoria-badge" style="background: #f1f3f5; padding: 4px 10px; border-radius: 20px; font-size: 0.85em; display: flex; align-items: center; gap: 6px; border: 1px solid #e9ecef;">
-                    <span>{{ categoria[2] }} {{ categoria[1] }}</span>
-                    <a href="/excluir_categoria/{{ categoria[0] }}" 
-                       style="color: #dc3545; text-decoration: none; font-weight: bold; font-size: 1.1em; line-height: 1;" 
-                       onclick="return confirm('Tem certeza que deseja excluir a categoria &quot;{{ categoria[1] }}&quot;?')">×</a>
-                </div>
-            {% endfor %}
-        </div>
-    </div>
-
-    <hr>
-
-    <h2 style="text-align: center; margin-top: 40px;">📋 Minhas Notas</h2>
-
-    <div class="dashboard">
-        <div class="card-resumo">
-            <h3>{{ total }}</h3>
-            <p>Pendentes</p>
-        </div>
-        <div class="card-resumo" style="border-bottom: 4px solid #ff4d4d;">
-            <h3>{{ vencidas }}</h3>
-            <p>Vencidas</p>
-        </div>
-        <div class="card-resumo" style="border-bottom: 4px solid #ffcc00;">
-            <h3>{{ alertas }}</h3>
-            <p>Em Alerta</p>
-        </div>
-        <div class="card-resumo" style="border-bottom: 4px solid #28a745;">
-            <h3>{{ concluidas_total }}</h3>
-            <p>Concluídas</p>
-        </div>
-    </div>
-
-
-    <!--"onkeyup -> é o que faz que toda vez que o usuário digitar e soltar a tecla, as notas atualizam, rodando o script "filtrarBusca()"-->
-    <div class="busca-container">
-        <input type="text" id="inputBusca" placeholder="🔍 Pesquisar pelo título..." onkeyup="filtrarBusca()">
-    </div>
-
-    <div style="text-align: center; margin-top: 15px; display: flex; justify-content: center; gap: 20px;">
-        <a href="/concluidas" style="color: #666; font-size: 0.9em; text-decoration: none; font-weight: 500;">📂 Ver Histórico de Concluídas</a>
-        <span style="color: #ccc;">|</span>
-        <a href="/lixeira" style="color: #666; font-size: 0.9em; text-decoration: none; font-weight: 500;">🗑️ Ver Lixeira</a>
-    </div>
-
-    <div class="filtros-container">
-        <a href="/" class="btn-filtro {% if categoria_ativa == 'Todas' %}active{% endif %}">📂 Todas</a>
-
-        {% for categoria in categorias %}
-            <a href="/?categoria={{ categoria[1] }}" class="btn-filtro {% if categoria_ativa == categoria[1] %}active{% endif %}"> {{ categoria[2] }} {{ categoria[1] }} </a>
-        {% endfor %}
-    </div>
-
-    <div class="notas-container">
-        {% for n in notas %}
-        <div class="nota-card {{ n[4] }}">
-
-            <a href="/concluir/{{ n[0] }}" class="btn-concluir">✅ Concluir</a>
-
-            <a href="/editar/{{ n[0] }}" class="btn-editar">✏️ Editar</a>
-
-            <a href="/deletar_lixeira/{{ n[0] }}" class="btn-excluir" onclick="return confirm('Mandar esta nota para a lixeira?')">🗑️ Excluir</a>
-
-            {% if n[-1] == "vencido" %}
-                <div class="alerta-vencido">
-                    🚫 JÁ VENCEU! (Prazo encerrado)
-                </div>
-            {% elif n[-1] == "alerta" %}
-                <div class="alerta-vencimento">
-                    ⚠️ ATENÇÃO: Vencimento Próximo!
-                </div>
-            {% endif %}
-
-            <div style="margin-top: 10px; clear: both;">
-                <strong>{{ n[1] }}</strong>
-                <span class="nota-badge-categoria"> {{ n[3] }} </span>
-            </div>
-            
-            <p style="margin: 10px 0;">{{ n[2] }}</p>
-            
-            <div style="font-size: 0.8em; color: #888;">
-                Prioridade: {{ n[4] }} | 
-                Prazo: {{ n[7] }}
-            </div>
-        </div>
-        {% endfor %}
-    </div>
-
-    <script>
-    function filtrarBusca() {
-        // 1. Pega o valor digitado e transforma em minúsculo
-        // "toLowerCase() é o que transforma em minúsculo"
-        let input = document.getElementById('inputBusca').value.toLowerCase();
-        
-        // 2. Pega todos os cartões de notas
-        // O JS cria uma lista (parecida com uma lista do Python) contendo todos os elementos que têm a classe CSS .nota-card.
-        let notas = document.getElementsByClassName('nota-card');
-
-        // 3. Percorre cada nota
-        // Entra em cada nota para verificar o conteúdo
-        for (let i = 0; i < notas.length; i++) {
-            // Pega o título da nota (que está dentro do <strong>)
-            // Dentro do cartão atual (notas[i]), ele procura pela tag <strong> (onde está o seu título). Ele pega o texto (innerText) e também transforma em minúsculo.
-            let titulo = notas[i].getElementsByTagName('strong')[0].innerText.toLowerCase();
-            
-            // 4. Se o título contiver o que foi digitado, mostra. Se não, esconde.
-            // includes(input): Verifica se o texto da busca está "dentro" do título.
-            // style.display = "none": Isso é puro CSS via JS. É o que dá o efeito da nota "sumir" / não aparecer
-            if (titulo.includes(input)) {
-                notas[i].style.display = "";
-            } else {
-                notas[i].style.display = "none";
-            }
-        }
-    }
-    </script>
-
 </body>
 </html>

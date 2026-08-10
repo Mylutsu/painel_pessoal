@@ -1,571 +1,547 @@
 /* ==========================================
-   1. ESTILOS GLOBAIS E BASE
+   1. Variáveis e Reset Global
    ========================================== */
-body { 
-    font-family: 'Segoe UI', sans-serif; 
-    background: #f0f2f5; 
-    padding: 20px; 
-    color: #333; 
+:root {
+    --bg-color: #f1f5f9;
+    --card-bg: #ffffff;
+    --text-color: #0f172a;
+    --text-muted: #64748b;
+    --border-color: #e2e8f0;
+    --bg-item: #f8fafc;
+    --bg-input: #ffffff;
+    --primary-color: #2563eb;
+    --primary-hover: #1d4ed8;
 }
 
-hr {
-    border: 0;
-    border-top: 1px solid #ddd;
-    margin: 20px 0;
+body.dark-mode {
+    --bg-color: #0f172a;
+    --card-bg: #1e293b;
+    --text-color: #f8fafc;
+    --text-muted: #94a3b8;
+    --border-color: #334155;
+    --bg-item: #0f172a;
+    --bg-input: #0f172a;
+    --primary-color: #3b82f6;
+    --primary-hover: #2563eb;
 }
 
-.container { 
-    max-width: 800px; 
-    margin: 0 auto; 
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
 }
 
-.text-center {
-    text-align: center;
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    line-height: 1.5;
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-.subtitulo-muted {
-    color: #666;
-}
-
-.margin-top-large {
-    margin-top: 40px;
+.app-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
 }
 
 /* ==========================================
-   2. FORMULÁRIOS E CAMPOS DE ENTRADA
+   2. Cabeçalho e Dashboard
    ========================================== */
-.form-container { 
-    background: white; 
-    padding: 20px; 
-    border-radius: 8px; 
-    max-width: 500px; 
-    margin: 0 auto 30px auto; 
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+.main-header {
+    margin-bottom: 24px;
 }
 
-/* Container tracejado de adicionar categoria */
-.form-container-categoria {
-    margin-top: 10px; 
-    background: #fdfdfd; 
-    border: 1px dashed #ccc;
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
 }
 
-/* Alinhamento flexível para os campos de categoria */
-.form-linha-dupla {
-    display: flex; 
-    gap: 10px; 
+.header-content h1 {
+    font-size: 26px;
+    font-weight: 800;
+}
+
+.header-actions {
+    display: flex;
+    gap: 10px;
     align-items: center;
 }
 
-input, select, textarea { 
-    width: 100%; 
-    margin: 8px 0; 
-    padding: 10px; 
-    border: 1px solid #ddd; 
-    border-radius: 4px; 
-    box-sizing: border-box; 
+.btn-theme {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
 }
 
-button { 
-    background: #28a745; 
-    color: white; 
-    border: none; 
-    padding: 12px; 
-    width: 100%; 
-    border-radius: 4px; 
-    cursor: pointer; 
-    font-weight: bold;
+.btn-nav {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    padding: 8px 14px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
 }
 
-/* Label auxiliar para datas */
-.label-auxiliar {
-    font-size: 0.8em; 
-    color: #666;
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
 }
 
-/* ==========================================
-   3. DASHBOARD (CARD DE RESUMOS)
-   ========================================== */
-.dashboard {
-    display: flex;
-    justify-content: center;
-    gap: 20px;
-    margin-bottom: 30px;
-}
-
-.card-resumo {
-    background: white;
-    padding: 15px 25px;
+.dash-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
     border-radius: 10px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-    text-align: center;
-    min-width: 120px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
-.card-resumo h3 {
-    margin: 0;
-    font-size: 1.8em;
-    font-weight: bold;
+.dash-number {
+    font-size: 24px;
+    font-weight: 800;
 }
 
-.card-resumo p {
-    margin: 5px 0 0 0;
-    color: #666;
+.dash-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 600;
 }
 
-/* Bordas coloridas do Dashboard */
-.card-resumo.vencidas { border-bottom: 4px solid #ff4d4d; }
-.card-resumo.alertas { border-bottom: 4px solid #ffcc00; }
-.card-resumo.concluidas { border-bottom: 4px solid #28a745; }
-
-.text-vermelho { color: #d9534f; }
-.text-amarelo { color: #f0ad4e; }
-.text-azul { color: #0275d8; }
+.alerta-card { border-top: 4px solid #f59e0b; }
+.vencido-card { border-top: 4px solid #ef4444; }
 
 /* ==========================================
-   4. SISTEMA DE GRADE E CARDS DE NOTAS
+   3. Layout Princial (Grid Sidebar + Feed)
    ========================================== */
-.notas-container {
-    max-width: 800px;
-    margin: 0 auto;
-    display: grid; 
-    grid-template-columns: 1fr 1fr; 
-    gap: 20px; 
+.content-grid {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 24px;
 }
 
-@media (max-width: 600px) {
-    .notas-container { grid-template-columns: 1fr; }
+@media (max-width: 850px) {
+    .content-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
-.nota-card { 
-    background: white; 
-    padding: 15px; 
-    border-left: 8px solid #ccc; 
-    border-radius: 8px; 
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
-    transition: transform 0.2s; 
+/* Sidebar e Formulários */
+.sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
 }
 
-.nota-card:hover {
-    transform: translateY(-5px); 
+.card-form {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 20px;
 }
 
-/* Variação para notas já concluídas no histórico */
-.nota-card.concluida-estilo {
-    border-left: 5px solid #28a745; 
-    margin-bottom: 15px;
+.card-form h2, .card-form h3 {
+    font-size: 16px;
+    margin-bottom: 14px;
 }
 
-/* Cores de prioridade */
-.nota-card.Alta { border-left-color: #d9534f; }
-.nota-card.Média { border-left-color: #f0ad4e; }
-.nota-card.Baixa { border-left-color: #5cb85c; }
-
-/* Elementos internos do Card */
-.nota-card-header {
-    margin-top: 10px; 
-    clear: both;
+.card-form form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
 
-.nota-badge-categoria {
-    font-size: 0.7em; 
-    background: #eee; 
-    padding: 2px 5px; 
-    border-radius: 3px; 
-    margin-left: 10px;
+.card-form input, 
+.card-form select, 
+.card-form textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background-color: var(--bg-input);
+    color: var(--text-color);
+    font-family: inherit;
+    font-size: 14px;
 }
 
-.nota-badge-historico {
-    color: #666; 
-    background: #eee; 
-    padding: 2px 6px; 
-    border-radius: 3px;
+.card-form textarea {
+    resize: vertical;
+    min-height: 80px;
 }
 
-.nota-conteudo {
-    margin: 10px 0;
+.form-row {
+    display: flex;
+    gap: 10px;
 }
 
-.nota-conteudo-historico {
-    margin: 8px 0; 
-    color: #444;
+.form-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
 }
 
-.nota-metadados {
-    font-size: 0.8em; 
-    color: #888;
+.form-group label {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 600;
 }
 
-.container-links-historico {
-    margin-bottom: 12px;
-}
-
-/* ==========================================
-   5. ALERTAS DE VENCIMENTO
-   ========================================== */
-.alerta-vencimento, .alerta-vencido {
-    padding: 8px;
-    border-radius: 4px;
-    font-size: 0.85em;
-    margin-top: 10px;
-    margin-bottom: 10px;
-    font-weight: bold;
-    text-align: center;
-    display: block;
-    position: relative; 
-    z-index: 1; 
-    clear: both;
-    box-sizing: border-box;
-}
-
-.alerta-vencimento {
-    background: #fff3cd; 
-    color: #856404;      
-    border: 1px solid #ffeeba;
-    animation: piscar 2s infinite; 
-}
-
-.alerta-vencido {
-    background: #f8d7da; 
-    color: #721c24;      
-    border: 1px solid #f5c6cb;
-}
-
-@keyframes piscar {
-    0% { opacity: 1; }
-    50% { opacity: 0.5; }
-    100% { opacity: 1; }
-}
-
-/* ==========================================
-   6. BOTÕES E LINKS DE AÇÃO
-   ========================================== */
-.btn-concluir, .btn-editar, .btn-excluir {
-    float: right; 
-    background-color: #f8f9fa;
-    padding: 5px 10px;
-    margin-bottom: 10px;
-    border-radius: 15px;
-    text-decoration: none; 
-    font-size: 0.8em;
-    font-weight: bold;
-    position: relative;
-    z-index: 10; 
-}
-
-.btn-concluir {
-    color: #28a745;
-    border: 1px solid #28a745;
-}
-
-.btn-concluir:hover {
-    background-color: #28a745;
-    color: white;
-}
-
-.btn-editar {
-    margin-right: 10px;
-    color: #007bff;
-    border: 1px solid #007bff;
-}
-
-.btn-editar:hover {
-    background-color: #007bff;
-    color: white;
-}
-
-.btn-excluir {
-    margin-right: 10px;
-    color: #dc3545;
-    border: 1px solid #dc3545;
-}
-
-.btn-excluir:hover {
-    background-color: #dc3545;
-    color: white;
-}
-
-.btn-salvar { 
-    background: #007bff; 
-    color: white; 
-    border: none; 
-    padding: 12px; 
-    width: 100%; 
-    border-radius: 4px; 
-    cursor: pointer; 
-    font-weight: bold; 
-}
-
-.btn-cancelar { 
-    display: block; 
-    text-align: center; 
-    margin-top: 10px; 
-    color: #666; 
-    text-decoration: none; 
-    font-size: 0.9em; 
-}
-
-.btn-voltar { 
-    display: inline-block; 
-    padding: 10px 20px; 
-    background: #6c757d; 
-    color: white; 
-    text-decoration: none; 
-    border-radius: 5px; 
-    margin-bottom: 20px; 
-}
-
-.btn-voltar:hover { 
-    background: #5a6268; 
-}
-
-.btn-restaurar {
-    text-decoration: none; 
-    background: #007bff; 
-    color: white; 
-    padding: 6px 12px; 
-    border-radius: 4px; 
-    font-size: 0.85em; 
-    font-weight: bold; 
-    display: inline-block; 
+.btn-principal {
+    background-color: var(--primary-color);
+    color: #ffffff;
+    border: none;
+    padding: 10px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
     transition: background 0.2s;
 }
 
-.btn-restaurar:hover {
-    background: #0056b3;
+.btn-principal:hover {
+    background-color: var(--primary-hover);
 }
 
-/* Link simples de histórico */
-.link-historico-secundario {
-    color: #666; 
-    font-size: 0.9em;
+.btn-secundario {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.form-inline {
+    display: flex;
+    gap: 8px;
+}
+
+.lista-categorias {
+    list-style: none;
+    margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.lista-categorias li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 10px;
+    background: var(--bg-item);
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+.btn-deletar-cat {
+    color: #ef4444;
+    text-decoration: none;
+    font-weight: bold;
 }
 
 /* ==========================================
-   7. FILTROS E PESQUISA (BUSCA)
+   4. Feed, Filtros e Grid de Cards
    ========================================== */
-.filtros-container {
+.feed {
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.filter-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+#buscaInput {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background-color: var(--card-bg);
+    color: var(--text-color);
+}
+
+.categorias-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.chip {
+    padding: 6px 12px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    color: var(--text-color);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.chip.active {
+    background: var(--primary-color);
+    color: #ffffff;
+    border-color: var(--primary-color);
+}
+
+.notas-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+    align-items: start;
+}
+
+.nota-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+}
+
+.nota-card.vencido { border-left: 5px solid #ef4444; }
+.nota-card.alerta { border-left: 5px solid #f59e0b; }
+
+.nota-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.badge-cat {
+    font-size: 11px;
+    background: var(--bg-item);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+.badge-prio {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.prio-alta { background: #fee2e2; color: #991b1b; }
+.prio-média { background: #fef3c7; color: #92400e; }
+.prio-baixa { background: #dcfce7; color: #166534; }
+
+.nota-titulo {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.nota-conteudo {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+    white-space: pre-wrap;
+}
+
+.nota-vencimento {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+}
+
+.nota-footer {
+    display: flex;
+    gap: 6px;
+    border-top: 1px solid var(--border-color);
+    padding-top: 10px;
+    margin-top: auto;
+}
+
+.btn-acao {
+    flex: 1;
+    text-align: center;
+    padding: 6px;
+    border-radius: 6px;
+    font-size: 12px;
+    text-decoration: none;
+    font-weight: 600;
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+}
+
+/* ==========================================
+   Estilos de Agrupamento e Filtro por Prioridade
+   ========================================== */
+.filter-group {
+    display: flex;
+    align-items: center;
     gap: 10px;
-    margin-bottom: 20px;
     flex-wrap: wrap;
 }
 
-.btn-filtro {
-    padding: 8px 16px;
-    background: white;
-    border: 1px solid #ddd;
-    border-radius: 20px;
-    text-decoration: none;
-    color: #555;
-    font-size: 0.9em;
-    transition: all 0.3s;
+.filter-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    min-width: 80px;
 }
 
-.btn-filtro:hover {
-    background: #e9ecef;
+.priority-section {
+    margin-bottom: 28px;
 }
 
-.btn-filtro.active {
-    background: #007bff;
-    color: white;
-    border-color: #007bff;
-    box-shadow: 0 2px 5px rgba(0,123,255,0.3);
+.priority-title {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-color);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 6px;
 }
 
-.busca-container {
-    max-width: 500px;
-    margin: 0 auto 20px auto;
+.btn-concluir:hover { background: #dcfce7; color: #166534; }
+.btn-editar:hover { background: #e0f2fe; color: #075985; }
+.btn-excluir:hover { background: #fee2e2; color: #991b1b; }
+
+/* ==========================================
+   5. Checklist Interativo
+   ========================================== */
+.checklist-container {
+    margin: 12px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
-#inputBusca {
+.progress-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.progress-bar-bg {
     width: 100%;
-    padding: 12px 20px;
-    border: 2px solid #ddd;
-    border-radius: 25px;
-    font-size: 1em;
-    outline: none;
-    transition: border-color 0.3s;
+    height: 8px;
+    background-color: var(--border-color);
+    border-radius: 4px;
+    overflow: hidden;
 }
 
-#inputBusca:focus {
-    border-color: #007bff;
+.progress-bar-fill {
+    height: 100%;
+    background-color: #22c55e;
+    transition: width 0.3s ease;
 }
 
-
-/* ==========================================================================
-   8. MODO ESCURO (DARK MODE) - APRENDIZADO PASSO A PASSO
-   ========================================================================== */
-
-/* O seletor "body.dark-mode" diz ao navegador: 
-  "Aplique estes estilos na tag <body> APENAS se ela tiver a classe chamada 'dark-mode'".
-  O uso do "!important" é um recurso do CSS para garantir que essa cor FORCE a substituição 
-  de qualquer outra cor de fundo que tenha sido definida antes no arquivo.
-*/
-body.dark-mode {
-    background: #121212 !important; /* Altera a cor de fundo geral da página para um cinza quase preto */
-    color: #f5f5f5 !important;      /* Altera a cor dos textos principais para um branco fosco (confortável aos olhos) */
+.progress-info small {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 600;
 }
 
-/*
-  Aqui estamos agrupando vários seletores separados por vírgula. 
-  Isso significa: "Aplique a regra abaixo em todos esses elementos de uma vez só, 
-  desde que a página esteja com o 'body.dark-mode' ativo".
-*/
-body.dark-mode .form-container,
-body.dark-mode .busca-container input,
-body.dark-mode .nota-card,
-body.dark-mode input,
-body.dark-mode textarea,
-body.dark-mode select {
-    background: #1e1e1e !important; /* Transforma o fundo dos blocos e inputs em um cinza um pouco mais claro que o fundo geral */
-    color: #f5f5f5 !important;      /* Garante que o texto digitado dentro das caixas fique branco */
-    border-color: #333 !important;  /* Altera a borda dos campos para um cinza escuro, tirando aquela borda branca chamativa */
+.checklist-items {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 220px;
+    overflow-y: auto;
 }
 
-/*
-   Criamos uma regra exclusiva para eles. Mudamos o fundo e o texto, mas NÃO tocamos 
-   nas bordas, permitindo que o vermelho, amarelo e verde do HTML continuem brilhando!
-*/
-body.dark-mode .card-resumo {
-    background: #1e1e1e !important; /* Deixa o fundo dos cards do dashboard escuro, mantendo a consistência visual */
-    color: #f5f5f5 !important;      /* Garante que os textos dentro dos cards fiquem claros */
+.checklist-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 8px;
+    background: var(--bg-item);
+    border-radius: 6px;
+    font-size: 14px;
+    transition: all 0.2s ease;
 }
 
-/* 🔴 Prioridade Alta no Modo Escuro */
-body.dark-mode .nota-card.Alta {
-    background: #2c2c2c !important; /* Mantém o fundo padrão escuro puro */
-    border: 1px solid #444;        /* Borda padrão discreta */
-    border-left: 6px solid #d9534f !important; /* Apenas o charme da linha vermelha */
+.checklist-item label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    width: 100%;
 }
 
-/* 🟡 Prioridade Média no Modo Escuro */
-body.dark-mode .nota-card.Média {
-    background: #2c2c2c !important; /* Mantém o fundo padrão escuro puro */
-    border: 1px solid #444;        /* Borda padrão discreta */
-    border-left: 6px solid #f0ad4e !important; /* Apenas o charme da linha amarela */
+.checklist-item input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: #2563eb;
 }
 
-/* 🟢 Prioridade Baixa no Modo Escuro */
-body.dark-mode .nota-card.Baixa {
-    background: #2c2c2c !important; /* Mantém o fundo padrão escuro puro */
-    border: 1px solid #444;        /* Borda padrão discreta */
-    border-left: 6px solid #5cb85c !important; /* Apenas o charme da linha verde */
+.checklist-item.completed .item-texto {
+    text-decoration: line-through;
+    opacity: 0.55;
 }
 
-/*
-   Lembra da classe "categoria-badge" que colocamos no HTML? 
-   Aqui dizemos: quando o modo escuro estiver ativo, mude o fundo cinza-claro para um cinza escuro,
-   garantindo o contraste perfeito com a letra branca.
-*/
-body.dark-mode .categoria-badge {
-    background: #2d2d2d !important; /* Inverte o fundo de cinza-claro para escuro */
-    border-color: #555 !important;   /* Deixa a borda um pouco mais clara que o fundo para destacar a pílula */
-    color: #ffffff !important;   /* 🌟 Força o texto da pílula a ficar branco */
+.btn-del-item {
+    color: #ef4444;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 16px;
+    padding: 0 4px;
+    opacity: 0.6;
+    transition: opacity 0.2s ease;
 }
 
-/* Garante que o texto de dentro do <span> também fique 100% branco */
-body.dark-mode .categoria-badge span {
-    color: #ffffff !important;
+.btn-del-item:hover {
+    opacity: 1;
 }
 
-/* Garante que o link de excluir (x) a categoria continue visível e vermelho no modo escuro */
-body.dark-mode .categoria-badge a {
-    color: #ff6b6b !important;
+.add-item-card-form {
+    display: flex;
+    gap: 6px;
+    margin-top: 4px;
 }
 
-/* Garante que a tag de categoria dentro do card de notas fique escura com texto branco */
-body.dark-mode .nota-badge-categoria {
-    background: #2d2d2d !important; /* Fundo cinza escuro */
-    color: #ffffff !important;      /* Letra totalmente branca */
-    border: 1px solid #555 !important; /* Bordinha sutil para dar acabamento */
+.add-item-card-form input {
+    flex: 1;
+    padding: 6px 10px;
+    font-size: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background-color: var(--bg-input);
+    color: var(--text-color);
 }
 
-/*
-  O "::placeholder" é um pseudo-elemento. Ele serve para estilizar especificamente
-  aquele texto explicativo cinza que fica dentro do campo antes de você digitar algo 
-  (ex: "Escreva os detalhes aqui...").
-*/
-body.dark-mode input::placeholder,
-body.dark-mode textarea::placeholder {
-    color: #777 !important; /* Deixa o texto de ajuda do placeholder em um cinza bem apagado */
+.add-item-card-form button {
+    padding: 6px 12px;
+    background-color: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
 }
 
-/* Estiliza as linhas horizontais de divisão (<hr>) no modo escuro */
-body.dark-mode hr {
-    border-top: 1px solid #333 !important; /* Substitui a linha divisória clara por uma linha escura e sutil */
-}
-
-/* Modifica o visual dos botões de filtro de categoria */
-body.dark-mode .btn-filtro {
-    background: #2d2d2d !important; /* Fundo cinza escuro para os filtros desativados */
-    color: #f5f5f5 !important;      /* Texto claro */
-    border-color: #444 !important;  /* Borda sutil */
-}
-
-/* Estiliza especificamente o botão de filtro que estiver ATIVO (selecionado) */
-body.dark-mode .btn-filtro.active {
-    background: #007bff !important; /* Mantém o azul padrão de destaque para o filtro ativo */
-    color: #ffffff !important;      /* Texto totalmente branco */
-}
-
-/* Ajusta o texto de descrição/conteúdo da sua nota */
-body.dark-mode .nota-conteudo {
-    color: #dddddd !important; /* Um branco levemente acinzentado para dar hierarquia visual ao título */
-}
-
-/* Ajusta os metadados (ex: "Prioridade: Média | Prazo: ..."), parágrafos e textos auxiliares.
-  Em design de interfaces, textos menos importantes devem ser mais escuros/apagados no modo escuro.
-*/
-body.dark-mode .nota-metadados,
-body.dark-mode .label-auxiliar,
-body.dark-mode p,
-body.dark-mode small {
-    color: #b0b0b0 !important; /* Um cinza médio para textos secundários */
-}
-
-/* Ajusta as pequenas tags/badges (como a data de vencimento nas concluídas) */
-body.dark-mode small {
-    background: #2d2d2d !important; /* Dá um fundo cinza de destaque para o texto pequeno */
-}
-
-/* Garante que TODOS os três botões de ação se adaptem nativamente ao Modo Escuro */
-body.dark-mode .btn-concluir,
-body.dark-mode .btn-editar,
-body.dark-mode .btn-excluir {
-    background: #1e1e1e !important;
-}
-
-
-/* ==========================================================================
-   BOTÃO FLUTUANTE DO MODO ESCURO
-   ========================================================================== */
-.btn-dark-toggle {
-    position: fixed;            /* "fixed" faz o botão ficar fixo na tela, ele não se move mesmo que você role a página */
-    bottom: 20px;               /* Distância de 20 pixels da parte inferior da tela */
-    right: 20px;                /* Distância de 20 pixels da lateral direita da tela */
-    width: auto !important;     /* Largura do botão */
-    background: #222;           /* Cor de fundo do botão no modo claro (fundo escuro com texto claro) */
-    color: #fff;                /* Cor do texto/emoji dentro do botão */
-    border: 2px solid #444;     /* Borda do botão */
-    padding: 10px 10px;         /* Espaçamento interno: 12px vertical e 16px horizontal (deixa o botão gordinho) */
-    border-radius: 50px;        /* Deixa as bordas totalmente arredondadas (estilo pílula) */
-    cursor: pointer;            /* Faz o ponteiro do mouse virar a "mãozinha" de clique ao passar por cima */
-    font-size: 0.9em;             /* Tamanho padrão da fonte */
-    box-shadow: 0 4px 12px rgba(0,0,0,0.4); /* Cria uma sombra preta suave atrás do botão para parecer que ele flutua */
-    z-index: 9999;              /* "z-index" controla as camadas da tela. 9999 garante que ele fique no TOPO de qualquer elemento */
-    transition: all 0.2s ease;  /* Diz ao navegador para animar suavemente (durante 0.2 segundos) qualquer mudança visual */
-}
-
-/* O ":hover" é um estado do CSS que ativa quando o usuário passa o mouse por cima do elemento */
-.btn-dark-toggle:hover {
-    transform: scale(1.05);     /* Efeito de animação: aumenta levemente o tamanho do botão em 5% ao passar o mouse */
-}
-
-/* Define como o próprio botão flutuante deve se comportar visualmente quando o modo escuro ESTIVER ativo */
-body.dark-mode .btn-dark-toggle {
-    background: #fff;           /* Inverte: o fundo do botão fica branco no modo escuro */
-    color: #222;                /* O texto do botão fica escuro */
-    border-color: #ccc;         /* A borda fica cinza clara */
+.add-item-card-form button:hover {
+    background-color: #1d4ed8;
 }
