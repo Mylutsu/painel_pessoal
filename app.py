@@ -570,9 +570,22 @@ def api_eventos():
 
     return jsonify(eventos)
 
+# ==============================================================================
+# SEÇÃO 10: ROTAS PWA
+# ==============================================================================
+
+# Rotas de Suporte ao PWA
+@app.route('/manifest.json')
+def manifest():
+    return app.send_static_file('manifest.json')
+
+@app.route('/sw.js')
+def service_worker():
+    return app.send_static_file('sw.js')
+
 
 # ==============================================================================
 # EXECUÇÃO DO SERVIDOR
 # ==============================================================================
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
