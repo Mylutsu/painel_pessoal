@@ -11,7 +11,7 @@
     <title>{% block title %}Painel Pessoal de Anotações{% endblock %}</title>
 
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link rel="manifest" href="/manifest.json">
+    <link rel="manifest" href="/manifest.json"> 
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192.png') }}">
     {% block extra_head %}{% endblock %}
 </head>
@@ -20,22 +20,19 @@
         <!-- Cabeçalho Base da Aplicação -->
         <header class="main-header">
             <div class="header-content">
-                <h1>📌 <a href="{{ url_for('index') }}" style="text-decoration: none; color: inherit;">Painel Pessoal</a></h1>
+                <h1>📌 Painel Pessoal</h1>
                 <div class="header-actions">
                     <button id="theme-toggle" class="btn-theme" title="Alternar Tema">🌙</button>
                     
-                    <!-- Só exibe o botão "Início" se NÃO estivermos na página principal -->
-                    {% if request.endpoint != 'index' %}
+                    {% if session.get('usuario_id') %}
                         <a href="{{ url_for('index') }}" class="btn-nav">🏠 Início</a>
+                        <a href="{{ url_for('calendario') }}" class="btn-nav">📅 Calendário</a>
+                        <a href="{{ url_for('concluidas') }}" class="btn-nav">✅ Concluídas</a>
+                        <a href="{{ url_for('lixeira') }}" class="btn-nav">🗑️ Lixeira</a>
+                        <a href="{{ url_for('logout') }}" class="btn-nav" style="background-color: #ef4444; color: white;">🚪 Sair</a>
                     {% endif %}
-
-                    <a href="{{ url_for('calendario') }}" class="btn-nav">📅 Calendário</a>
-                    <a href="{{ url_for('concluidas') }}" class="btn-nav">✅ Concluídas</a>
-                    <a href="{{ url_for('lixeira') }}" class="btn-nav btn-lixeira-nav">🗑️ Lixeira</a>
                 </div>
             </div>
-            
-            {% block dashboard %}{% endblock %}
         </header>
 
         <!-- Área onde cada página injeta seu próprio conteúdo -->

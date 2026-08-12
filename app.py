@@ -308,6 +308,17 @@ def logout():
     flash('Você saiu do sistema.', 'info')
     return redirect(url_for('login'))
 
+@app.before_request
+def verificar_usuario_existente():
+    """Se o usuário tiver um cookie de sessão antigo mas não existir no BD, desconecta automaticamente."""
+    u_id = session.get('usuario_id')
+    if u_id:
+        with conectar_banco() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT id FROM usuarios WHERE id = ?", (u_id,))
+            if not cursor.fetchone():
+                session.clear()
+
 # ==============================================================================
 # SEÇÃO 5: ROTAS DA PÁGINA PRINCIPAL E DASHBOARD
 # ==============================================================================
