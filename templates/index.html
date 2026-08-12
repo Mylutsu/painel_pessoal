@@ -1,356 +1,303 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends 'base.html' %}
 
-    <!-- Configurações para PWA e Dispositivos Móveis -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#2563eb">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="Painel">
+{% block title %}Painel Pessoal de Anotações{% endblock %}
 
-    <title>Painel Pessoal de Anotações</title>
+{% block dashboard %}
+<div class="dashboard-grid">
+    <div class="dash-card">
+        <span class="dash-number">{{ total }}</span>
+        <span class="dash-label">Notas Ativas</span>
+    </div>
+    <div class="dash-card alerta-card">
+        <span class="dash-number">{{ alertas }}</span>
+        <span class="dash-label">Em Alerta</span>
+    </div>
+    <div class="dash-card vencido-card">
+        <span class="dash-number">{{ vencidas }}</span>
+        <span class="dash-label">Vencidas</span>
+    </div>
+</div>
+{% endblock %}
 
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link rel="manifest" href="/manifest.json">
-    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192.png') }}">
-</head>
-<body>
-    <div class="app-container">
-        <!-- ===================================================================
-             1. CABEÇALHO & DASHBOARD DE MÉTRICAS
-             =================================================================== -->
-        <header class="main-header">
-            <div class="header-content">
-                <h1>📌 Painel Pessoal</h1>
-                <div class="header-actions">
-                    <button id="theme-toggle" class="btn-theme" title="Alternar Tema">🌙</button>
-                    <a href="{{ url_for('calendario') }}" class="btn-nav">📅 Calendário</a>
-                    <a href="{{ url_for('concluidas') }}" class="btn-nav">✅ Concluídas ({{ concluidas_total }})</a>
-                    <a href="{{ url_for('lixeira') }}" class="btn-nav btn-lixeira-nav">🗑️ Lixeira</a>
-                </div>
-            </div>
+{% block content %}
+<!-- SIDEBAR: CRIAÇÃO DE NOTAS E CATEGORIAS -->
+<aside class="sidebar">
+    <!-- Formulário de Nova Anotação / Checklist -->
+    <div class="card-form">
+        <h2>Nova Anotação / Lista</h2>
+        <form action="{{ url_for('adicionar') }}" method="POST">
+            <input type="text" name="titulo" placeholder="Título da nota ou lista..." required>
             
-            <div class="dashboard-grid">
-                <div class="dash-card">
-                    <span class="dash-number">{{ total }}</span>
-                    <span class="dash-label">Notas Ativas</span>
-                </div>
-                <div class="dash-card alerta-card">
-                    <span class="dash-number">{{ alertas }}</span>
-                    <span class="dash-label">Em Alerta</span>
-                </div>
-                <div class="dash-card vencido-card">
-                    <span class="dash-number">{{ vencidas }}</span>
-                    <span class="dash-label">Vencidas</span>
-                </div>
+            <div class="form-group">
+                <label for="tipoSelect">Tipo de Nota:</label>
+                <select name="tipo" id="tipoSelect" onchange="alternarCamposTipo()">
+                    <option value="texto">📝 Texto Livre</option>
+                    <option value="checklist">☑️ Checklist / Lista</option>
+                </select>
             </div>
-        </header>
 
-        <!-- ===================================================================
-             2. ESTRUTURA PRINCIPAL (SIDEBAR + FEED)
-             =================================================================== -->
-        <main class="content-grid">
-            
-            <!-- SIDEBAR: CRIAÇÃO DE NOTAS E CATEGORIAS -->
-            <aside class="sidebar">
-                <!-- Formulário de Nova Anotação / Checklist -->
-                <div class="card-form">
-                    <h2>Nova Anotação / Lista</h2>
-                    <form action="{{ url_for('adicionar') }}" method="POST">
-                        <input type="text" name="titulo" placeholder="Título da nota ou lista..." required>
-                        
-                        <div class="form-group">
-                            <label for="tipoSelect">Tipo de Nota:</label>
-                            <select name="tipo" id="tipoSelect" onchange="alternarCamposTipo()">
-                                <option value="texto">📝 Texto Livre</option>
-                                <option value="checklist">☑️ Checklist / Lista</option>
-                            </select>
-                        </div>
+            <!-- Campo Texto Livre -->
+            <div id="campoConteudo">
+                <textarea name="conteudo" placeholder="Escreva os detalhes aqui..."></textarea>
+            </div>
 
-                        <!-- Campo Texto Livre -->
-                        <div id="campoConteudo">
-                            <textarea name="conteudo" placeholder="Escreva os detalhes aqui..."></textarea>
-                        </div>
-
-                        <!-- Campo Checklist Inicial -->
-                        <div id="campoChecklistInicial" class="is-hidden">
-                            <label>Itens Iniciais (opcional):</label>
-                            <div id="containerItensIniciais">
-                                <input type="text" name="itens_checklist[]" placeholder="Item 1">
-                                <input type="text" name="itens_checklist[]" placeholder="Item 2" class="mt-xs">
-                            </div>
-                            <button type="button" class="btn-secundario mt-xs" onclick="adicionarCampoInicial()">+ Outro Item</button>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="categoria">Categoria:</label>
-                                <select name="categoria" id="categoria">
-                                    {% for cat in categorias %}
-                                        <option value="{{ cat[1] }}">{{ cat[2] }} {{ cat[1] }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="prioridade">Prioridade:</label>
-                                <select name="prioridade" id="prioridade">
-                                    <option value="Baixa">🟢 Baixa</option>
-                                    <option value="Média" selected>🟡 Média</option>
-                                    <option value="Alta">🔴 Alta</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="data_vencimento">Vencimento:</label>
-                                <input type="date" name="data_vencimento" id="data_vencimento">
-                            </div>
-                            <div class="form-group">
-                                <label for="dias_aviso">Aviso (dias):</label>
-                                <input type="number" name="dias_aviso" id="dias_aviso" value="3" min="1" max="30">
-                            </div>
-                        </div>
-
-                        <button type="submit" class="btn-principal">Criar Nota</button>
-                    </form>
+            <!-- Campo Checklist Inicial -->
+            <div id="campoChecklistInicial" class="is-hidden">
+                <label>Itens Iniciais (opcional):</label>
+                <div id="containerItensIniciais">
+                    <input type="text" name="itens_checklist[]" placeholder="Item 1">
+                    <input type="text" name="itens_checklist[]" placeholder="Item 2" class="mt-xs">
                 </div>
+                <button type="button" class="btn-secundario mt-xs" onclick="adicionarCampoInicial()">+ Outro Item</button>
+            </div>
 
-                <!-- Formulário de Gestão de Categorias -->
-                <div class="card-form">
-                    <h3>Gerenciar Categorias</h3>
-                    <form action="{{ url_for('adicionar_categoria') }}" method="POST" class="form-inline">
-                        <input type="text" name="emoji" placeholder="Emoji" class="input-emoji" required>
-                        <input type="text" name="nome" placeholder="Nome da Categoria" required>
-                        <button type="submit" class="btn-secundario">+</button>
-                    </form>
-                    
-                    <ul class="lista-categorias">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="categoria">Categoria:</label>
+                    <select name="categoria" id="categoria">
                         {% for cat in categorias %}
-                            <li>
-                                <span>{{ cat[2] }} {{ cat[1] }}</span>
-                                <a href="{{ url_for('excluir_categoria', id=cat[0]) }}" class="btn-deletar-cat" onclick="return confirm('Deseja excluir esta categoria?')">&times;</a>
-                            </li>
+                            <option value="{{ cat.nome }}">{{ cat.emoji }} {{ cat.nome }}</option>
                         {% endfor %}
-                    </ul>
+                    </select>
                 </div>
-            </aside>
-
-            <!-- FEED: BUSCA, FILTROS E CARTÕES DE NOTAS -->
-            <section class="feed">
-                <!-- Barra de Busca e Chips de Filtro -->
-                <div class="filter-bar">
-                    <input type="text" id="buscaInput" placeholder="🔍 Buscar notas..." onkeyup="filtrarNotas()">
-                    
-                    <!-- Filtro por Categoria -->
-                    <div class="filter-group">
-                        <span class="filter-label">Categoria:</span>
-                        <div class="categorias-chips">
-                            <a href="{{ url_for('index', categoria='Todas', prioridade=prioridade_ativa) }}" class="chip {% if categoria_ativa == 'Todas' %}active{% endif %}">Todas</a>
-                            {% for cat in categorias %}
-                                <a href="{{ url_for('index', categoria=cat[1], prioridade=prioridade_ativa) }}" class="chip {% if categoria_ativa == cat[1] %}active{% endif %}">
-                                    {{ cat[2] }} {{ cat[1] }}
-                                </a>
-                            {% endfor %}
-                        </div>
-                    </div>
-
-                    <!-- Filtro por Prioridade -->
-                    <div class="filter-group">
-                        <span class="filter-label">Prioridade:</span>
-                        <div class="categorias-chips">
-                            <a href="{{ url_for('index', categoria=categoria_ativa, prioridade='Todas') }}" class="chip {% if prioridade_ativa == 'Todas' %}active{% endif %}">Todas</a>
-                            <a href="{{ url_for('index', categoria=categoria_ativa, prioridade='Alta') }}" class="chip {% if prioridade_ativa == 'Alta' %}active{% endif %}">🔴 Alta</a>
-                            <a href="{{ url_for('index', categoria=categoria_ativa, prioridade='Média') }}" class="chip {% if prioridade_ativa == 'Média' %}active{% endif %}">🟡 Média</a>
-                            <a href="{{ url_for('index', categoria=categoria_ativa, prioridade='Baixa') }}" class="chip {% if prioridade_ativa == 'Baixa' %}active{% endif %}">🟢 Baixa</a>
-                        </div>
-                    </div>
+                <div class="form-group">
+                    <label for="prioridade">Prioridade:</label>
+                    <select name="prioridade" id="prioridade">
+                        <option value="Baixa">🟢 Baixa</option>
+                        <option value="Média" selected>🟡 Média</option>
+                        <option value="Alta">🔴 Alta</option>
+                    </select>
                 </div>
+            </div>
 
-                <!-- Seções Agrupadas por Prioridade -->
-                <div id="notasContainer">
-                    {% set tem_notas = notas | length > 0 %}
-
-                    {% if tem_notas %}
-                        {% for prio_nome, prio_icon in [('Alta', '🔴'), ('Média', '🟡'), ('Baixa', '🟢')] %}
-                            {% set ns = namespace(notas_prio=[]) %}
-                            {% for n in notas %}
-                                {% if n[4] == prio_nome %}
-                                    {% set ns.notas_prio = ns.notas_prio + [n] %}
-                                {% endif %}
-                            {% endfor %}
-
-                            {% if ns.notas_prio | length > 0 %}
-                                <div class="priority-section">
-                                    <h3 class="priority-title">{{ prio_icon }} Prioridade {{ prio_nome }}</h3>
-                                    <div class="notas-grid">
-                                        {% for nota in ns.notas_prio %}
-                                            <div class="nota-card prioridade-{{ nota[4] | lower }} {{ nota[12] }}">
-                                                <div class="nota-header">
-                                                    <span class="badge-cat">{{ nota[3] or 'Geral' }}</span>
-                                                    <span class="badge-prio prio-{{ nota[4] | lower }}">{{ nota[4] }}</span>
-                                                </div>
-
-                                                <h3 class="nota-titulo">{{ nota[1] }}</h3>
-
-                                                <!-- Renderização de Checklist -->
-                                                {% if nota[5] == 'checklist' %}
-                                                    <div class="checklist-container">
-                                                        <div class="progress-info">
-                                                            <div class="progress-bar-bg">
-                                                                <div class="progress-bar-fill" id="progress-bar-{{ nota[0] }}" style="width: {{ nota[14] }}%;"></div>
-                                                            </div>
-                                                            <small id="progress-text-{{ nota[0] }}">{{ nota[16] }}/{{ nota[15] }} concluídos ({{ nota[14] }}%)</small>
-                                                        </div>
-
-                                                        <ul class="checklist-items" id="checklist-items-{{ nota[0] }}">
-                                                            {% for item in nota[13] %}
-                                                                <li class="checklist-item {% if item[2] %}completed{% endif %}">
-                                                                    <label>
-                                                                        <input type="checkbox" {% if item[2] %}checked{% endif %} onchange="toggleItemChecklist({{ item[0] }}, {{ nota[0] }}, this)">
-                                                                        <span class="item-texto">{{ item[1] }}</span>
-                                                                    </label>
-                                                                    <a href="{{ url_for('deletar_item_checklist', item_id=item[0]) }}" class="btn-del-item" title="Remover item">&times;</a>
-                                                                </li>
-                                                            {% endfor %}
-                                                        </ul>
-
-                                                        <form action="{{ url_for('adicionar_item_checklist', nota_id=nota[0]) }}" method="POST" class="add-item-card-form">
-                                                            <input type="text" name="texto" placeholder="+ Adicionar item..." required>
-                                                            <button type="submit">+</button>
-                                                        </form>
-                                                    </div>
-                                                <!-- Renderização de Texto Livre -->
-                                                {% else %}
-                                                    <p class="nota-conteudo">{{ nota[2] }}</p>
-                                                {% endif %}
-
-                                                {% if nota[7] %}
-                                                    <div class="nota-vencimento">
-                                                        📅 Vencimento: <strong>{{ nota[7] }}</strong>
-                                                    </div>
-                                                {% endif %}
-
-                                                <div class="nota-footer">
-                                                    <a href="{{ url_for('concluir', id=nota[0]) }}" class="btn-acao btn-concluir" title="Concluir Nota">✅ Concluir</a>
-                                                    <a href="{{ url_for('editar', id=nota[0]) }}" class="btn-acao btn-editar" title="Editar Nota">✏️ Editar</a>
-                                                    <a href="{{ url_for('deletar_lixeira', id=nota[0]) }}" class="btn-acao btn-excluir" title="Mover para Lixeira">🗑️ Lixeira</a>
-                                                </div>
-                                            </div>
-                                        {% endfor %}
-                                    </div>
-                                </div>
-                            {% endif %}
-                        {% endfor %}
-                    {% else %}
-                        <p class="sem-notas">Nenhuma anotação encontrada.</p>
-                    {% endif %}
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="data_vencimento">Vencimento:</label>
+                    <input type="date" name="data_vencimento" id="data_vencimento">
                 </div>
-            </section>
-        </main>
+                <div class="form-group">
+                    <label for="dias_aviso">Aviso (dias):</label>
+                    <input type="number" name="dias_aviso" id="dias_aviso" value="3" min="1" max="30">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="recorrencia">Repetir (Recorrência):</label>
+                <select name="recorrencia" id="recorrencia">
+                    <option value="Nenhuma" {% if nota and nota.recorrencia == 'Nenhuma' %}selected{% endif %}>❌ Não repetir</option>
+                    <option value="Semanal" {% if nota and nota.recorrencia == 'Semanal' %}selected{% endif %}>📅 Semanal (A cada 7 dias)</option>
+                    <option value="Mensal" {% if nota and nota.recorrencia == 'Mensal' %}selected{% endif %}>🔄 Mensal (Todo mês)</option>
+                    <option value="Anual" {% if nota and nota.recorrencia == 'Anual' %}selected{% endif %}>🎂 Anual (Todo ano)</option>
+                </select>
+            </div>
+
+            <button type="submit" class="btn-principal">Criar Nota</button>
+        </form>
     </div>
 
-    <!-- ===================================================================
-         3. SCRIPTS JAVASCRIPT
-         =================================================================== -->
-    <script>
-        // Alterna entre os campos de Texto Livre e Checklist no formulário de criação
-        function alternarCamposTipo() {
-            const tipo = document.getElementById('tipoSelect').value;
-            const campoConteudo = document.getElementById('campoConteudo');
-            const campoChecklist = document.getElementById('campoChecklistInicial');
+    <!-- Formulário de Gestão de Categorias -->
+    <div class="card-form">
+        <h3>Gerenciar Categorias</h3>
+        <form action="{{ url_for('adicionar_categoria') }}" method="POST" class="form-inline">
+            <input type="text" name="emoji" placeholder="Emoji" class="input-emoji" required>
+            <input type="text" name="nome" placeholder="Nome da Categoria" required>
+            <button type="submit" class="btn-secundario">+</button>
+        </form>
+        
+        <ul class="lista-categorias">
+            {% for cat in categorias %}
+                <li>
+                    <span>{{ cat.emoji }} {{ cat.nome }}</span>
+                    <a href="{{ url_for('excluir_categoria', id=cat.id) }}" class="btn-deletar-cat" onclick="return confirm('Deseja excluir esta categoria?')">&times;</a>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+</aside>
 
-            if (tipo === 'checklist') {
-                campoConteudo.classList.add('is-hidden');
-                campoChecklist.classList.remove('is-hidden');
-            } else {
-                campoConteudo.classList.remove('is-hidden');
-                campoChecklist.classList.add('is-hidden');
+<!-- FEED: BUSCA, FILTROS E CARTÕES DE NOTAS -->
+<section class="feed">
+    <!-- Barra de Busca e Chips de Filtro -->
+    <div class="filter-bar">
+        <input type="text" id="buscaInput" placeholder="🔍 Buscar notas..." onkeyup="filtrarNotas()">
+        
+        <!-- Filtro por Categoria -->
+        <div class="filter-group">
+            <span class="filter-label">Categoria:</span>
+            <div class="categorias-chips">
+                <a href="{{ url_for('index', categoria='Todas', prioridade=prioridade_ativa) }}" class="chip {% if categoria_ativa == 'Todas' %}active{% endif %}">Todas</a>
+                {% for cat in categorias %}
+                    <a href="{{ url_for('index', categoria=cat.nome, prioridade=prioridade_ativa) }}" class="chip {% if categoria_ativa == cat.nome %}active{% endif %}">
+                        {{ cat.emoji }} {{ cat.nome }}
+                    </a>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Filtro por Prioridade -->
+        <div class="filter-group">
+            <span class="filter-label">Prioridade:</span>
+            <div class="categorias-chips">
+                <a href="{{ url_for('index', categoria=categoria_ativa, prioridade='Todas') }}" class="chip {% if prioridade_ativa == 'Todas' %}active{% endif %}">Todas</a>
+                <a href="{{ url_for('index', categoria=categoria_ativa, prioridade='Alta') }}" class="chip {% if prioridade_ativa == 'Alta' %}active{% endif %}">🔴 Alta</a>
+                <a href="{{ url_for('index', categoria=categoria_ativa, prioridade='Média') }}" class="chip {% if prioridade_ativa == 'Média' %}active{% endif %}">🟡 Média</a>
+                <a href="{{ url_for('index', categoria=categoria_ativa, prioridade='Baixa') }}" class="chip {% if prioridade_ativa == 'Baixa' %}active{% endif %}">🟢 Baixa</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Seções Agrupadas por Prioridade -->
+    <div id="notasContainer">
+        {% set tem_notas = notas | length > 0 %}
+
+        {% if tem_notas %}
+            {% for prio_nome, prio_icon in [('Alta', '🔴'), ('Média', '🟡'), ('Baixa', '🟢')] %}
+                {% set ns = namespace(notas_prio=[]) %}
+                {% for n in notas %}
+                    {% if n.prioridade == prio_nome %}
+                        {% set ns.notas_prio = ns.notas_prio + [n] %}
+                    {% endif %}
+                {% endfor %}
+
+                {% if ns.notas_prio | length > 0 %}
+                    <div class="priority-section">
+                        <h3 class="priority-title">{{ prio_icon }} Prioridade {{ prio_nome }}</h3>
+                        <div class="notas-grid">
+                            {% for nota in ns.notas_prio %}
+                                <div class="nota-card prioridade-{{ nota.prioridade | lower }} {{ nota.status_visual }}">
+                                    <div class="nota-header">
+                                        <span class="badge-cat">{{ nota.categoria or 'Geral' }}</span>
+                                        <span class="badge-prio prio-{{ nota.prioridade | lower }}">{{ nota.prioridade }}</span>
+                                    </div>
+
+                                    <h3 class="nota-titulo">{{ nota.titulo }}</h3>
+
+                                    <!-- Renderização de Checklist -->
+                                    {% if nota.tipo == 'checklist' %}
+                                        <div class="checklist-container">
+                                            <div class="progress-info">
+                                                <div class="progress-bar-bg">
+                                                    <div class="progress-bar-fill" id="progress-bar-{{ nota.id }}" style="width: {{ nota.progresso }}%;"></div>
+                                                </div>
+                                                <small id="progress-text-{{ nota.id }}">{{ nota.concluidos }}/{{ nota.total_itens }} concluídos ({{ nota.progresso }}%)</small>
+                                            </div>
+
+                                            <ul class="checklist-items" id="checklist-items-{{ nota.id }}">
+                                                {% for item in nota.itens %}
+                                                    <li class="checklist-item {% if item.concluido %}completed{% endif %}">
+                                                        <label>
+                                                            <input type="checkbox" {% if item.concluido %}checked{% endif %} onchange="toggleItemChecklist({{ item.id }}, {{ nota.id }}, this)">
+                                                            <span class="item-texto">{{ item.texto }}</span>
+                                                        </label>
+                                                        <a href="{{ url_for('deletar_item_checklist', item_id=item.id) }}" class="btn-del-item" title="Remover item">&times;</a>
+                                                    </li>
+                                                {% endfor %}
+                                            </ul>
+
+                                            <form action="{{ url_for('adicionar_item_checklist', nota_id=nota.id) }}" method="POST" class="add-item-card-form">
+                                                <input type="text" name="texto" placeholder="+ Adicionar item..." required>
+                                                <button type="submit">+</button>
+                                            </form>
+                                        </div>
+                                    <!-- Renderização de Texto Livre -->
+                                    {% else %}
+                                        <p class="nota-conteudo">{{ nota.conteudo }}</p>
+                                    {% endif %}
+
+                                    {% if nota.data_vencimento_formatada or nota.data_vencimento %}
+                                        <div class="nota-vencimento">
+                                            📅 Vencimento: <strong>{{ nota.data_vencimento_formatada or nota.data_vencimento }}</strong>
+                                        </div>
+                                    {% endif %}
+
+                                    <div class="nota-footer">
+                                        <a href="{{ url_for('concluir', id=nota.id) }}" class="btn-acao btn-concluir" title="Concluir Nota">✅ Concluir</a>
+                                        <a href="{{ url_for('editar', id=nota.id) }}" class="btn-acao btn-editar" title="Editar Nota">✏️ Editar</a>
+                                        <a href="{{ url_for('deletar_lixeira', id=nota.id) }}" class="btn-acao btn-excluir" title="Mover para Lixeira">🗑️ Lixeira</a>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+            {% endfor %}
+        {% else %}
+            <p class="sem-notas">Nenhuma anotação encontrada.</p>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Alterna entre os campos de Texto Livre e Checklist no formulário de criação
+    function alternarCamposTipo() {
+        const tipo = document.getElementById('tipoSelect').value;
+        const campoConteudo = document.getElementById('campoConteudo');
+        const campoChecklist = document.getElementById('campoChecklistInicial');
+
+        if (tipo === 'checklist') {
+            campoConteudo.classList.add('is-hidden');
+            campoChecklist.classList.remove('is-hidden');
+        } else {
+            campoConteudo.classList.remove('is-hidden');
+            campoChecklist.classList.add('is-hidden');
+        }
+    }
+
+    // Adiciona dinamicamente um novo input para item inicial de checklist
+    function adicionarCampoInicial() {
+        const container = document.getElementById('containerItensIniciais');
+        const novoInput = document.createElement('input');
+        novoInput.type = 'text';
+        novoInput.name = 'itens_checklist[]';
+        novoInput.placeholder = 'Próximo item...';
+        novoInput.classList.add('mt-xs');
+        container.appendChild(novoInput);
+    }
+
+    // Alterna o checkbox do item de maneira assíncrona (Fetch API) sem dar recarga na página
+    function toggleItemChecklist(itemId, notaId, checkbox) {
+        const li = checkbox.closest('.checklist-item');
+
+        fetch(`/toggle_item_checklist/${itemId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                li.classList.toggle('completed', data.concluido);
+
+                // Atualiza a barra e a porcentagem de progresso
+                const progressBar = document.getElementById(`progress-bar-${notaId}`);
+                if (progressBar) progressBar.style.width = `${data.progresso}%`;
+
+                const progressText = document.getElementById(`progress-text-${notaId}`);
+                if (progressText) progressText.textContent = `${data.concluidos}/${data.total} concluídos (${data.progresso}%)`;
             }
-        }
+        })
+        .catch(err => console.error('Erro ao alternar item:', err));
+    }
 
-        // Adiciona dinamicamente um novo input para item inicial de checklist
-        function adicionarCampoInicial() {
-            const container = document.getElementById('containerItensIniciais');
-            const novoInput = document.createElement('input');
-            novoInput.type = 'text';
-            novoInput.name = 'itens_checklist[]';
-            novoInput.placeholder = 'Próximo item...';
-            novoInput.classList.add('mt-xs');
-            container.appendChild(novoInput);
-        }
+    // Filtro em tempo real no front-end por seções de prioridade
+    function filtrarNotas() {
+        const termo = document.getElementById('buscaInput').value.toLowerCase();
+        const sections = document.querySelectorAll('.priority-section');
 
-        // Alterna o checkbox do item de maneira assíncrona (Fetch API) sem dar recarga na página
-        function toggleItemChecklist(itemId, notaId, checkbox) {
-            const li = checkbox.closest('.checklist-item');
+        sections.forEach(section => {
+            const cards = section.querySelectorAll('.nota-card');
+            let visiveisNaSecao = 0;
 
-            fetch(`/toggle_item_checklist/${itemId}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    li.classList.toggle('completed', data.concluido);
-
-                    // Atualiza a barra e a porcentagem de progresso
-                    const progressBar = document.getElementById(`progress-bar-${notaId}`);
-                    if (progressBar) progressBar.style.width = `${data.progresso}%`;
-
-                    const progressText = document.getElementById(`progress-text-${notaId}`);
-                    if (progressText) progressText.textContent = `${data.concluidos}/${data.total} concluídos (${data.progresso}%)`;
-                }
-            })
-            .catch(err => console.error('Erro ao alternar item:', err));
-        }
-
-        // Filtro em tempo real no front-end por seções de prioridade
-        function filtrarNotas() {
-            const termo = document.getElementById('buscaInput').value.toLowerCase();
-            const sections = document.querySelectorAll('.priority-section');
-
-            sections.forEach(section => {
-                const cards = section.querySelectorAll('.nota-card');
-                let visiveisNaSecao = 0;
-
-                cards.forEach(card => {
-                    const texto = card.innerText.toLowerCase();
-                    const visivel = texto.includes(termo);
-                    card.style.display = visivel ? 'flex' : 'none';
-                    if (visivel) visiveisNaSecao++;
-                });
-
-                section.style.display = visiveisNaSecao > 0 ? 'block' : 'none';
+            cards.forEach(card => {
+                const texto = card.innerText.toLowerCase();
+                const visivel = texto.includes(termo);
+                card.style.display = visivel ? 'flex' : 'none';
+                if (visivel) visiveisNaSecao++;
             });
-        }
 
-        // Sincronização do Modo Escuro via LocalStorage
-        const themeBtn = document.getElementById('theme-toggle');
-        const currentTheme = localStorage.getItem('theme');
-
-        if (currentTheme === 'dark') {
-            document.body.classList.add('dark-mode');
-            themeBtn.innerText = '☀️';
-        }
-
-        themeBtn.addEventListener('click', () => {
-            document.body.classList.toggle('dark-mode');
-            const isDark = document.body.classList.contains('dark-mode');
-            themeBtn.innerText = isDark ? '☀️' : '🌙';
-            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            section.style.display = visiveisNaSecao > 0 ? 'block' : 'none';
         });
-
-        // Registro do Service Worker para PWA
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
-                    .then(reg => console.log('Service Worker registrado com sucesso!'))
-                    .catch(err => console.error('Erro ao registrar Service Worker:', err));
-            });
-        }
-    </script>
-</body>
-</html>
+    }
+</script>
+{% endblock %}

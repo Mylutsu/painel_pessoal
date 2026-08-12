@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Painel">
+
+    <title>{% block title %}Painel Pessoal de Anotações{% endblock %}</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192.png') }}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <div class="app-container">
+        <!-- Cabeçalho Base da Aplicação -->
+        <header class="main-header">
+            <div class="header-content">
+                <h1>📌 <a href="{{ url_for('index') }}" style="text-decoration: none; color: inherit;">Painel Pessoal</a></h1>
+                <div class="header-actions">
+                    <button id="theme-toggle" class="btn-theme" title="Alternar Tema">🌙</button>
+                    
+                    <!-- Só exibe o botão "Início" se NÃO estivermos na página principal -->
+                    {% if request.endpoint != 'index' %}
+                        <a href="{{ url_for('index') }}" class="btn-nav">🏠 Início</a>
+                    {% endif %}
+
+                    <a href="{{ url_for('calendario') }}" class="btn-nav">📅 Calendário</a>
+                    <a href="{{ url_for('concluidas') }}" class="btn-nav">✅ Concluídas</a>
+                    <a href="{{ url_for('lixeira') }}" class="btn-nav btn-lixeira-nav">🗑️ Lixeira</a>
+                </div>
+            </div>
+            
+            {% block dashboard %}{% endblock %}
+        </header>
+
+        <!-- Área onde cada página injeta seu próprio conteúdo -->
+        <main class="content-grid">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <!-- Script Global (Modo Escuro e PWA) -->
+    <script>
+        const themeBtn = document.getElementById('theme-toggle');
+        const currentTheme = localStorage.getItem('theme');
+
+        if (currentTheme === 'dark') {
+            document.body.classList.add('dark-mode');
+            if (themeBtn) themeBtn.innerText = '☀️';
+        }
+
+        if (themeBtn) {
+            themeBtn.addEventListener('click', () => {
+                document.body.classList.toggle('dark-mode');
+                const isDark = document.body.classList.contains('dark-mode');
+                themeBtn.innerText = isDark ? '☀️' : '🌙';
+                localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            });
+        }
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('Service Worker registrado!'))
+                    .catch(err => console.error('Erro no SW:', err));
+            });
+        }
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -23,7 +23,7 @@ app.secret_key = 'teste_de_senha_super_secreta' # mude para uma chave aleatoria 
 def conectar_banco():
     """Cria e retorna uma conexão com o banco SQLite ativando Chaves Estrangeiras."""
     conn = sqlite3.connect('painel_dados.db')
-    conn.execute("PRAGMA foreign_keys = ON;")
+    conn.row_factory = sqlite3.Row
     return conn
 
 
@@ -32,41 +32,45 @@ def carregar_detalhes_nota(nota, cursor, hoje):
     Processa metadados de uma nota: calcula prazos, status visual de alerta
     e consolida os itens de checklist com o percentual de progresso.
     """
-    n_lista = list(nota)
+    n_dict = dict(nota)
     status_visual = ""
     
-    # Processa data de vencimento e alerta (n[7] = data_vencimento, n[8] = dias_aviso)
-    if n_lista[7]:
+    # Processa data usando o nome criado no DB
+    data_venc_str = n_dict.get('data_vencimento')
+    dias_aviso_val = n_dict.get('dias_aviso')
+
+    if data_venc_str:
         try:
-            data_v = datetime.strptime(n_lista[7], '%Y-%m-%d').date()
+            data_v = datetime.strptime(data_venc_str, '%Y-%m-%d').date()
             diferenca = (data_v - hoje).days
-            dias_aviso = int(n_lista[8]) if n_lista[8] and str(n_lista[8]).isdigit() else 3
+            dias_aviso = int(dias_aviso_val) if dias_aviso_val and str(dias_aviso_val).isdigit() else 3
             
             if diferenca < 0:
                 status_visual = "vencido"
             elif diferenca <= dias_aviso:
                 status_visual = "alerta"
             
-            n_lista[7] = data_v.strftime('%d/%m/%Y')
+            n_dict['data_vencimento_formatada'] = data_v.strftime('%d/%m/%Y')
         except ValueError:
             pass
 
-    n_lista.append(status_visual)  # Índice 11: status_visual
+    n_dict['status_visual'] = status_visual
 
     # Processa itens do checklist
-    cursor.execute("SELECT id, texto, concluido FROM itens_checklist WHERE nota_id = ? ORDER BY id ASC", (n_lista[0],))
+    cursor.execute("SELECT id, texto, concluido FROM itens_checklist WHERE nota_id = ? ORDER BY id ASC", (n_dict['id'],))
     itens = cursor.fetchall()
     
     total_itens = len(itens)
-    concluidos = sum(1 for item in itens if item[2] == 1)
+    concluidos = sum(1 for item in itens if item['concluido'] == 1)
     progresso = int((concluidos / total_itens) * 100) if total_itens > 0 else 0
 
-    n_lista.append(itens)         # Índice 12: lista de tuplas (id, texto, concluido)
-    n_lista.append(progresso)     # Índice 13: % de progresso
-    n_lista.append(total_itens)   # Índice 14: total de itens
-    n_lista.append(concluidos)    # Índice 15: itens concluídos
+    # Adiciona os atributos no dicionário
+    n_dict['itens'] = itens
+    n_dict['progresso'] = progresso
+    n_dict['total_itens'] = total_itens
+    n_dict['concluidos'] = concluidos
 
-    return n_lista
+    return n_dict
 
 
 def limpar_lixeira_automatica(dias_limite=30):
@@ -77,11 +81,36 @@ def limpar_lixeira_automatica(dias_limite=30):
         cursor.execute("DELETE FROM notas WHERE status = 'lixeira' AND data_exclusao <= ?", (data_corte,))
         conn.commit()
 
+def calcular_proximo_vencimento(data_str, recorrencia):
+    """Calcula a próxima data de vencimento (AAAA-MM-DD) conforme a recorrência selecionada."""
+    if not data_str or not recorrencia or recorrencia == 'Nenhuma':
+        return None
+    try:
+        dt = datetime.strptime(data_str, '%Y-%m-%d').date()
+        if recorrencia == 'Semanal':
+            prox_dt = dt + timedelta(days=7)
+        elif recorrencia == 'Mensal':
+            ano = dt.year + (dt.month // 12)
+            mes = (dt.month % 12) + 1
+            max_dias = [31, 29 if (ano % 4 == 0 and (ano % 100 != 0 or ano % 400 == 0)) else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+            dia = min(dt.day, max_dias[mes - 1])
+            prox_dt = date(ano, mes, dia)
+        elif recorrencia == 'Anual':
+            ano = dt.year + 1
+            mes = dt.month
+            dia = 28 if (mes == 2 and dt.day == 29 and not (ano % 4 == 0 and (ano % 100 != 0 or ano % 400 == 0))) else dt.day
+            prox_dt = date(ano, mes, dia)
+        else:
+            return None
+        return prox_dt.strftime('%Y-%m-%d')
+    except ValueError:
+        return None
+
 # ==============================================================================
 # SEÇÃO 3: AGENDADOR DE TAREFAS E NOTIFICAÇÕES POR E-MAIL (MULTI-USUÁRIO)
 # ==============================================================================
 def verificar_e_enviar_alertas():
-    """Consulta compromissos de CADA usuário e envia e-mail personalizado com os alertas."""
+    """Consulta compromissos de CADA usuário e envia e-mail personalizado com os alertas e vencidos."""
     email_remetente = os.getenv("EMAIL_USUARIO")
     senha = os.getenv("EMAIL_SENHA")
 
@@ -91,7 +120,6 @@ def verificar_e_enviar_alertas():
 
     with conectar_banco() as conn:
         cursor = conn.cursor()
-        # Busca todos os usuários cadastrados no sistema
         cursor.execute("SELECT id, nome, email FROM usuarios")
         usuarios = cursor.fetchall()
 
@@ -99,7 +127,7 @@ def verificar_e_enviar_alertas():
 
         for u_id, u_nome, u_email in usuarios:
             cursor.execute("""
-                SELECT titulo, data_vencimento, categoria 
+                SELECT titulo, data_vencimento, categoria, COALESCE(dias_aviso, 3) 
                 FROM notas 
                 WHERE status = 'Ativo' AND usuario_id = ? AND data_vencimento IS NOT NULL AND data_vencimento != ''
             """, (u_id,))
@@ -111,12 +139,14 @@ def verificar_e_enviar_alertas():
             itens_html = []
             qtd_pendencias = 0
 
-            for titulo, data_venc_str, categoria in notas:
+            for titulo, data_venc_str, categoria, dias_aviso in notas:
                 try:
                     data_venc = datetime.strptime(data_venc_str, "%Y-%m-%d").date()
                     dias_restantes = (data_venc - hoje).days
                     cat_nome = categoria if categoria else "Geral"
+                    limite_alerta = int(dias_aviso) if dias_aviso is not None else 3
 
+                    # 1. NOTAS VENCIDAS
                     if dias_restantes < 0:
                         qtd_pendencias += 1
                         itens_html.append(f'''
@@ -126,6 +156,7 @@ def verificar_e_enviar_alertas():
                                 <small>Venceu há {abs(dias_restantes)} dia(s) — Data: {data_venc.strftime('%d/%m/%Y')}</small>
                             </div>
                         ''')
+                    # 2. NOTAS QUE VENCEM HOJE
                     elif dias_restantes == 0:
                         qtd_pendencias += 1
                         itens_html.append(f'''
@@ -135,11 +166,12 @@ def verificar_e_enviar_alertas():
                                 <small>Atenção! O vencimento está agendado para hoje.</small>
                             </div>
                         ''')
-                    elif dias_restantes <= 2:
+                    # 3. NOTAS EM ALERTA
+                    elif dias_restantes <= limite_alerta:
                         qtd_pendencias += 1
                         itens_html.append(f'''
                             <div class="item-card alerta">
-                                <span class="badge badge-alerta">Em Breve</span>
+                                <span class="badge badge-alerta">Em Alerta</span>
                                 <strong>{titulo}</strong> <span class="categoria">({cat_nome})</span><br>
                                 <small>Vence em {dias_restantes} dia(s) — Data: {data_venc.strftime('%d/%m/%Y')}</small>
                             </div>
@@ -150,7 +182,7 @@ def verificar_e_enviar_alertas():
             if qtd_pendencias > 0:
                 msg = MIMEMultipart("alternative")
                 msg["From"] = email_remetente
-                msg["To"] = u_email  # Envia para o e-mail individual do usuário
+                msg["To"] = u_email
                 msg["Subject"] = f"🔔 Alerta do Painel: {qtd_pendencias} conta(s)/tarefa(s) requerem atenção!"
 
                 conteudo_cards = "".join(itens_html)
@@ -205,7 +237,6 @@ def verificar_e_enviar_alertas():
                     print(f"✅ E-mail enviado para {u_email} com {qtd_pendencias} alerta(s).")
                 except Exception as e:
                     print(f"❌ Erro ao enviar e-mail para {u_email}: {e}")
-
 
 # Inicialização do agendador em segundo plano (Execução diária às 08:00)
 scheduler = BackgroundScheduler()
@@ -324,11 +355,11 @@ def index():
     hoje = date.today()
 
     for n in todas_ativas:
-        if n[7]:
+        if n['data_vencimento']:
             try:
-                data_v = datetime.strptime(n[7], '%Y-%m-%d').date()
+                data_v = datetime.strptime(n['data_vencimento'], '%Y-%m-%d').date()
                 diferenca = (data_v - hoje).days
-                dias_aviso = int(n[8]) if n[8] and str(n[8]).isdigit() else 3
+                dias_aviso = int(n['dias_aviso']) if n['dias_aviso'] and str(n['dias_aviso']).isdigit() else 3
                 if diferenca < 0:
                     vencidas += 1
                 elif diferenca <= dias_aviso:
@@ -368,13 +399,14 @@ def adicionar():
     tipo = request.form.get('tipo') or 'texto'
     vencimento = request.form.get('data_vencimento') or None
     aviso = request.form.get('dias_aviso') or None
+    recorrencia = request.form.get('recorrencia') or 'Nenhuma'
 
     with conectar_banco() as conn:
         cursor = conn.cursor()
         cursor.execute('''
-            INSERT INTO notas (titulo, conteudo, categoria, prioridade, tipo, data_vencimento, dias_aviso, usuario_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (titulo, conteudo, categoria, prioridade, tipo, vencimento, aviso, u_id))
+            INSERT INTO notas (titulo, conteudo, categoria, prioridade, tipo, data_vencimento, dias_aviso, recorrencia, usuario_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (titulo, conteudo, categoria, prioridade, tipo, vencimento, aviso, recorrencia, u_id))
         
         nota_id = cursor.lastrowid
 
@@ -404,12 +436,13 @@ def editar(id):
         tipo = request.form['tipo']
         data_vencimento = request.form['data_vencimento'] or None
         dias_aviso = request.form['dias_aviso'] or None
+        recorrencia = request.form.get('recorrencia') or 'Nenhuma'
 
         cursor.execute("""
             UPDATE notas 
-            SET titulo = ?, conteudo = ?, categoria = ?, prioridade = ?, tipo = ?, data_vencimento = ?, dias_aviso = ?
+            SET titulo = ?, conteudo = ?, categoria = ?, prioridade = ?, tipo = ?, data_vencimento = ?, dias_aviso = ?, recorrencia = ?
             WHERE id = ? AND usuario_id = ?
-        """, (titulo, conteudo, categoria, prioridade, tipo, data_vencimento, dias_aviso, id, u_id))
+        """, (titulo, conteudo, categoria, prioridade, tipo, data_vencimento, dias_aviso, recorrencia, id, u_id))
         
         conn.commit()
         conn.close()
@@ -435,11 +468,44 @@ def concluir(id):
     u_id = session.get('usuario_id')
     with conectar_banco() as conn:
         cursor = conn.cursor()
-        concluido = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        cursor.execute("UPDATE notas SET status = 'Concluido', data_criacao = ? WHERE id = ? AND usuario_id = ?", (concluido, id, u_id))
-        conn.commit()
-    return redirect(url_for('index'))
+        
+        # 1. Busca as informações da nota atual
+        cursor.execute("SELECT * FROM notas WHERE id = ? AND usuario_id = ?", (id, u_id))
+        nota_row = cursor.fetchone()
 
+        if nota_row:
+            nota = dict(nota_row)
+            recorrencia = nota.get('recorrencia', 'Nenhuma')
+            data_venc = nota.get('data_vencimento')
+
+            # 2. Se for uma nota recorrente com data de vencimento, gera a próxima automaticamente
+            if recorrencia and recorrencia != 'Nenhuma' and data_venc:
+                prox_vencimento = calcular_proximo_vencimento(data_venc, recorrencia)
+                
+                if prox_vencimento:
+                    cursor.execute('''
+                        INSERT INTO notas (titulo, conteudo, categoria, prioridade, tipo, data_vencimento, dias_aviso, recorrencia, usuario_id)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', (
+                        nota['titulo'], nota['conteudo'], nota['categoria'], 
+                        nota['prioridade'], nota['tipo'], prox_vencimento, 
+                        nota['dias_aviso'], recorrencia, u_id
+                    ))
+                    nova_nota_id = cursor.lastrowid
+
+                    # Caso a nota seja um checklist, duplica os itens marcando todos como desmarcados (0) para o novo mês
+                    if nota['tipo'] == 'checklist':
+                        cursor.execute("SELECT texto FROM itens_checklist WHERE nota_id = ?", (id,))
+                        itens = cursor.fetchall()
+                        for item in itens:
+                            cursor.execute("INSERT INTO itens_checklist (nota_id, texto, concluido) VALUES (?, ?, 0)", (nova_nota_id, item['texto']))
+
+            # 3. Finaliza a nota atual colocando o status como Concluido
+            concluido = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            cursor.execute("UPDATE notas SET status = 'Concluido', data_criacao = ? WHERE id = ? AND usuario_id = ?", (concluido, id, u_id))
+            conn.commit()
+
+    return redirect(url_for('index'))
 
 @app.route('/restaurar/<int:id>')
 def restaurar(id):
@@ -576,14 +642,14 @@ def lixeira():
 
     notas_processadas = []
     for n in notas:
-        n_lista = carregar_detalhes_nota(n, cursor, hoje)
-        if n[10]:
+        n_dict = carregar_detalhes_nota(n, cursor, hoje)
+        if n_dict.get('data_exclusao'):
             try:
-                data_ex = datetime.strptime(n[10], '%Y-%m-%d').date()
-                n_lista[10] = data_ex.strftime('%d/%m/%Y')
+                data_ex = datetime.strptime(n_dict['data_exclusao'], '%Y-%m-%d').date()
+                n_dict['data_exclusao_formatada'] = data_ex.strftime('%d/%m/%Y')
             except ValueError:
                 pass
-        notas_processadas.append(n_lista)
+        notas_processadas.append(n_dict)
 
     conn.close()
     return render_template('lixeira.html', notas=notas_processadas)
@@ -640,38 +706,37 @@ def calendario():
 @app.route('/api/eventos')
 def api_eventos():
     u_id = session.get('usuario_id')
-    with conectar_banco() as conn:
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT id, titulo, data_vencimento, prioridade, status, tipo, categoria 
-            FROM notas 
-            WHERE data_vencimento IS NOT NULL AND data_vencimento != '' AND status != 'lixeira' AND usuario_id = ?
-        """, (u_id,))
-        notas = cursor.fetchall()
+    conn = conectar_banco()
+    
+    # Busca notas
+    notas_db = conn.execute('''
+        SELECT id, titulo, data_vencimento, prioridade 
+        FROM notas 
+        WHERE status = 'Ativo'
+          AND usuario_id = ?
+          AND data_vencimento IS NOT NULL 
+          AND data_vencimento != ''
+    ''', (u_id,)).fetchall()
+    conn.close()
 
     eventos = []
-    for n in notas:
-        nota_id, titulo, vencimento, prioridade, status, tipo, categoria = n
+    for row in notas_db:
+        nota = dict(row)
         
-        if status == 'Concluido':
-            cor = '#64748b'
-        elif prioridade == 'Alta':
+        # Define a cor no calendario baseado na prioridade
+        cor = '#2563eb'
+        if nota.get('prioridade') == 'Alta':
             cor = '#ef4444'
-        elif prioridade == 'Média':
+        elif nota.get('prioridade') == 'Média':
             cor = '#f59e0b'
-        else:
+        elif nota.get('prioridade') == 'Baixa':
             cor = '#10b981'
 
-        icone = "☑️ " if tipo == "checklist" else "📝 "
-        cat_prefix = f"[{categoria}] " if categoria else ""
-
         eventos.append({
-            'id': nota_id,
-            'title': f"{icone}{cat_prefix}{titulo}",
-            'start': vencimento,
-            'backgroundColor': cor,
-            'borderColor': cor,
-            'textColor': '#ffffff'
+            'id': nota['id'],
+            'title': nota['titulo'],
+            'start': nota['data_vencimento'],
+            'color': cor
         })
 
     return jsonify(eventos)
@@ -686,6 +751,8 @@ def manifest():
 @app.route('/sw.js')
 def service_worker():
     return app.send_static_file('sw.js')
+
+# verificar_e_enviar_alertas() #teste de envio para email
 
 # ==============================================================================
 # EXECUÇÃO DO SERVIDOR

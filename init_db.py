@@ -43,6 +43,7 @@ def inicializar_banco():
                 data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP,
                 data_vencimento TEXT,
                 dias_aviso INTEGER DEFAULT 3,
+                recorrencia TEXT DEFAULT 'Nenhuma',
                 status TEXT DEFAULT 'Ativo',
                 data_exclusao TEXT,
                 usuario_id INTEGER NOT NULL,
