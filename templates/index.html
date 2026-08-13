@@ -51,44 +51,55 @@
                 <button type="button" class="btn-secundario mt-xs" onclick="adicionarCampoInicial()">+ Outro Item</button>
             </div>
 
+            <!-- CATEGORIA E PRIORIDADE -->
             <div class="form-row">
                 <div class="form-group">
                     <label for="categoria">Categoria:</label>
                     <select name="categoria" id="categoria">
-                        {% for cat in categorias %}
-                            <option value="{{ cat.nome }}">{{ cat.emoji }} {{ cat.nome }}</option>
-                        {% endfor %}
+                        <option value="Estudo">📚 Estudo</option>
+                        <option value="Financeiro">💰 Financeiro</option>
+                        <option value="Trabalho">💼 Trabalho</option>
+                        <option value="Pessoal">🏠 Pessoal</option>
+                        <option value="Saúde">🏥 Saúde</option>
                     </select>
                 </div>
                 <div class="form-group">
                     <label for="prioridade">Prioridade:</label>
                     <select name="prioridade" id="prioridade">
-                        <option value="Baixa">🟢 Baixa</option>
-                        <option value="Média" selected>🟡 Média</option>
                         <option value="Alta">🔴 Alta</option>
+                        <option value="Média" selected>🟡 Média</option>
+                        <option value="Baixa">🟢 Baixa</option>
                     </select>
                 </div>
             </div>
 
+            <!-- VENCIMENTO E HORÁRIO -->
             <div class="form-row">
                 <div class="form-group">
                     <label for="data_vencimento">Vencimento:</label>
                     <input type="date" name="data_vencimento" id="data_vencimento">
                 </div>
                 <div class="form-group">
-                    <label for="dias_aviso">Aviso (dias):</label>
-                    <input type="number" name="dias_aviso" id="dias_aviso" value="3" min="1" max="30">
+                    <label for="hora_vencimento">Horário (Opcional):</label>
+                    <input type="time" id="hora_vencimento" name="hora_vencimento">
                 </div>
             </div>
 
-            <div class="form-group">
-                <label for="recorrencia">Repetir (Recorrência):</label>
-                <select name="recorrencia" id="recorrencia">
-                    <option value="Nenhuma" {% if nota and nota.recorrencia == 'Nenhuma' %}selected{% endif %}>❌ Não repetir</option>
-                    <option value="Semanal" {% if nota and nota.recorrencia == 'Semanal' %}selected{% endif %}>📅 Semanal (A cada 7 dias)</option>
-                    <option value="Mensal" {% if nota and nota.recorrencia == 'Mensal' %}selected{% endif %}>🔄 Mensal (Todo mês)</option>
-                    <option value="Anual" {% if nota and nota.recorrencia == 'Anual' %}selected{% endif %}>🎂 Anual (Todo ano)</option>
-                </select>
+            <!-- AVISO E RECORRÊNCIA -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="dias_aviso">Aviso (dias antes):</label>
+                    <input type="number" name="dias_aviso" id="dias_aviso" value="3" min="1" max="30">
+                </div>
+                <div class="form-group">
+                    <label for="recorrencia">Repetir:</label>
+                    <select name="recorrencia" id="recorrencia">
+                        <option value="Nenhuma">❌ Não repetir</option>
+                        <option value="Semanal">📅 Semanal</option>
+                        <option value="Mensal">🔄 Mensal</option>
+                        <option value="Anual">🎂 Anual</option>
+                    </select>
+                </div>
             </div>
 
             <button type="submit" class="btn-principal">Criar Nota</button>
@@ -164,7 +175,11 @@
                         <h3 class="priority-title">{{ prio_icon }} Prioridade {{ prio_nome }}</h3>
                         <div class="notas-grid">
                             {% for nota in ns.notas_prio %}
-                                <div class="nota-card prioridade-{{ nota.prioridade | lower }} {{ nota.status_visual }}">
+                                <div class="nota-card prioridade-{{ nota.prioridade | lower }} {{ nota.status_visual }}"
+                                     data-id="{{ nota.id }}"
+                                     data-vencimento="{{ nota.data_vencimento }}"
+                                     data-hora="{{ nota.hora_vencimento or '' }}">
+                                     
                                     <div class="nota-header">
                                         <span class="badge-cat">{{ nota.categoria or 'Geral' }}</span>
                                         <span class="badge-prio prio-{{ nota.prioridade | lower }}">{{ nota.prioridade }}</span>
@@ -204,9 +219,13 @@
                                         <p class="nota-conteudo">{{ nota.conteudo }}</p>
                                     {% endif %}
 
+                                    <!-- ADICIONADO: Exibição da Data + Horário se existir -->
                                     {% if nota.data_vencimento_formatada or nota.data_vencimento %}
                                         <div class="nota-vencimento">
                                             📅 Vencimento: <strong>{{ nota.data_vencimento_formatada or nota.data_vencimento }}</strong>
+                                            {% if nota.hora_vencimento %}
+                                                às <strong>{{ nota.hora_vencimento }}</strong>
+                                            {% endif %}
                                         </div>
                                     {% endif %}
 
@@ -299,5 +318,97 @@
             section.style.display = visiveisNaSecao > 0 ? 'block' : 'none';
         });
     }
+
+    // Array para guardar os IDs de notas que já exibiram o alerta (evita popups repetidos a cada 30s)
+    const alertasExibidos = new Set();
+
+    function checarLembretes() {
+        const agora = new Date();
+
+        // Seleciona todas as notas renderizadas na tela que possuem data e hora
+        const cardsNotas = document.querySelectorAll('.nota-card'); 
+
+        cardsNotas.forEach(card => {
+            const idNota = card.getAttribute('data-id');
+            const dataVenc = card.getAttribute('data-vencimento'); // Exemplo: "2026-08-13"
+            const horaVenc = card.getAttribute('data-hora');       // Exemplo: "19:00"
+
+            // Se a nota tiver data e hora configuradas
+            if (dataVenc && horaVenc && !alertasExibidos.has(idNota)) {
+                const dataHoraEvento = new Date(`${dataVenc}T${horaVenc}:00`);
+                
+                // Calcula a diferença em minutos
+                const diferencaEmMS = dataHoraEvento - agora;
+                const minutosRestantes = Math.floor(diferencaEmMS / (1000 * 60));
+
+                // Dispara se faltar entre 0 e 15 minutos para o horário
+                if (minutosRestantes >= 0 && minutosRestantes <= 15) {
+                    alertasExibidos.add(idNota); // Marca para não disparar de novo
+                    
+                    // Exibe o alerta
+                    exibirPopup(card.querySelector('.titulo-nota').innerText, horaVenc, minutosRestantes);
+                }
+            }
+        });
+    }
+
+    function tocarSomNotificacao() {
+    try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        // Nota 1 (Tom Inicial)
+        const osc1 = audioCtx.createOscillator();
+        const gain1 = audioCtx.createGain();
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(523.25, audioCtx.currentTime); // Dó (C5)
+        gain1.gain.setValueAtTime(0.15, audioCtx.currentTime);
+        gain1.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+        osc1.connect(gain1);
+        gain1.connect(audioCtx.destination);
+        osc1.start();
+        osc1.stop(audioCtx.currentTime + 0.3);
+
+        // Nota 2 (Tom Secundário - 100ms depois)
+        setTimeout(() => {
+            const osc2 = audioCtx.createOscillator();
+            const gain2 = audioCtx.createGain();
+            osc2.type = 'sine';
+            osc2.frequency.setValueAtTime(659.25, audioCtx.currentTime); // Mi (E5)
+            gain2.gain.setValueAtTime(0.15, audioCtx.currentTime);
+            gain2.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+            osc2.connect(gain2);
+            gain2.connect(audioCtx.destination);
+            osc2.start();
+            osc2.stop(audioCtx.currentTime + 0.4);
+        }, 120);
+
+    } catch (e) {
+        console.log("Áudio aguardando primeira interação do usuário na página.");
+    }
+}
+
+    function exibirPopup(titulo, hora, minutos) {
+        tocarSomNotificacao();
+        // Texto de notificação
+        const mensagem = minutos === 0 
+            ? `⏰ AGORA: "${titulo}" agendado para as ${hora}!` 
+            : `🔔 LEMBRETE: "${titulo}" começa em ${minutos} minuto(s) (às ${hora})!`;
+        
+        // Notificação do navegador
+        if (Notification.permission === "granted") {
+                new Notification("Lembrete de Compromisso", {
+                    body: mensagem,
+                    icon: "/static/img/icon.png" // opcional
+                });
+            } else {
+                alert(mensagem);
+            }
+    }
+
+    // Executa a checagem a cada 30 segundos
+    setInterval(checarLembretes, 30000);
+
+    // Executa também assim que a página carrega
+    document.addEventListener('DOMContentLoaded', checarLembretes);
 </script>
 {% endblock %}

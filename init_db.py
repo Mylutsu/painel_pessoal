@@ -42,6 +42,7 @@ def inicializar_banco():
                 tipo TEXT DEFAULT 'texto',
                 data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP,
                 data_vencimento TEXT,
+                hora_vencimento TEXT,
                 dias_aviso INTEGER DEFAULT 3,
                 recorrencia TEXT DEFAULT 'Nenhuma',
                 status TEXT DEFAULT 'Ativo',

@@ -46,26 +46,31 @@
                 <textarea id="conteudo" name="conteudo" rows="4">{{ nota.conteudo or '' }}</textarea>
             </div>
 
-            <div class="form-row" style="display: flex; gap: 12px;">
-                <div class="form-group" style="flex: 1;">
+            <div class="form-row">
+                <div class="form-group">
                     <label for="data_vencimento">Data de Vencimento</label>
                     <input type="date" id="data_vencimento" name="data_vencimento" value="{{ nota.data_vencimento or '' }}">
                 </div>
-
-                <div class="form-group" style="flex: 1;">
-                    <label for="dias_aviso">Avisar quantos dias antes?</label>
-                    <input type="number" id="dias_aviso" name="dias_aviso" value="{{ nota.dias_aviso or 3 }}" min="1" max="30">
+                <div class="form-group">
+                    <label for="hora_vencimento">Horário (Opcional)</label>
+                    <input type="time" id="hora_vencimento" name="hora_vencimento" value="{{ nota.hora_vencimento or '' }}">
                 </div>
             </div>
 
-            <div class="form-group">
-                <label for="recorrencia">Repetir (Recorrência)</label>
-                <select name="recorrencia" id="recorrencia">
-                    <option value="Nenhuma" {% if nota.recorrencia == 'Nenhuma' or not nota.recorrencia %}selected{% endif %}>❌ Não repetir</option>
-                    <option value="Semanal" {% if nota.recorrencia == 'Semanal' %}selected{% endif %}>📅 Semanal (A cada 7 dias)</option>
-                    <option value="Mensal" {% if nota.recorrencia == 'Mensal' %}selected{% endif %}>🔄 Mensal (Todo mês)</option>
-                    <option value="Anual" {% if nota.recorrencia == 'Anual' %}selected{% endif %}>🎂 Anual (Todo ano)</option>
-                </select>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="dias_aviso">Avisar quantos dias antes?</label>
+                    <input type="number" id="dias_aviso" name="dias_aviso" value="{{ nota.dias_aviso or 3 }}" min="1" max="30">
+                </div>
+                <div class="form-group">
+                    <label for="recorrencia">Repetir (Recorrência)</label>
+                    <select name="recorrencia" id="recorrencia">
+                        <option value="Nenhuma" {% if nota.recorrencia == 'Nenhuma' or not nota.recorrencia %}selected{% endif %}>❌ Não repetir</option>
+                        <option value="Semanal" {% if nota.recorrencia == 'Semanal' %}selected{% endif %}>📅 Semanal</option>
+                        <option value="Mensal" {% if nota.recorrencia == 'Mensal' %}selected{% endif %}>🔄 Mensal</option>
+                        <option value="Anual" {% if nota.recorrencia == 'Anual' %}selected{% endif %}>🎂 Anual</option>
+                    </select>
+                </div>
             </div>
 
             <div class="form-actions" style="margin-top: 20px;">

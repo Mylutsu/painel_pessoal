@@ -67,7 +67,63 @@
                     .catch(err => console.error('Erro no SW:', err));
             });
         }
+
+        // 1. Pede permissão ao usuário para mostrar Notificações do Navegador
+        document.addEventListener("DOMContentLoaded", function() {
+            if ("Notification" in window && Notification.permission === "default") {
+                Notification.requestPermission();
+            }
+            
+            // Verifica notas pendentes a cada 1 minuto (60000ms)
+            verificarLembretesProximos();
+            setInterval(verificarLembretesProximos, 60000);
+        });
+
+        function verificarLembretesProximos() {
+            // Busca via rota rápida no Flask as notas de HOJE
+            fetch('/api/lembretes-hoje')
+                .then(response => response.json())
+                .then(notas => {
+                    const agora = new Date();
+
+                    notas.forEach(nota => {
+                        if (!nota.hora_vencimento) return;
+
+                        // Converte data + hora da nota para um objeto Date
+                        const [horas, minutos] = nota.hora_vencimento.split(':');
+                        const horarioNota = new Date();
+                        horarioNota.setHours(parseInt(horas), parseInt(minutos), 0, 0);
+
+                        // Diferença em minutos entre AGORA e o HORÁRIO DA NOTA
+                        const diffMinutos = Math.round((horarioNota - agora) / 60000);
+
+                        // Se faltar entre 29 e 30 minutos (ou 9 e 10 minutos)
+                        if (diffMinutos === 30 || diffMinutos === 10) {
+                            dispararNotificacaoPopup(nota, diffMinutos);
+                        }
+                    });
+                });
+        }
+
+        function dispararNotificacaoPopup(nota, minutosRestantes) {
+            const titulo = `⏰ Lembrete: ${nota.titulo}`;
+            const opcoes = {
+                body: `Seu compromisso é em ${minutosRestantes} minutos! (${nota.hora_vencimento})`,
+                icon: '/static/favicon.ico' // Opcional
+            };
+
+            // Se o navegador deu permissão, mostra notificação nativa
+            if ("Notification" in window && Notification.permission === "granted") {
+                new Notification(titulo, opcoes);
+            } else {
+                // Caso contrário, mostra um alerta simples na tela
+                alert(`${titulo}\n\n${opcoes.body}`);
+            }
+        }
+
     </script>
     {% block scripts %}{% endblock %}
+
+
 </body>
 </html>

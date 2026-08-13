@@ -15,7 +15,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = 'teste_de_senha_super_secreta' # mude para uma chave aleatoria em produção
+app.secret_key = os.getenv('SECRET_KEY')
 
 # ==============================================================================
 # SEÇÃO 2: FUNÇÕES UTILITÁRIAS E MANIPULAÇÃO DE BANCO DE DADOS
@@ -242,7 +242,6 @@ def verificar_e_enviar_alertas():
 scheduler = BackgroundScheduler()
 scheduler.add_job(verificar_e_enviar_alertas, 'cron', hour=8, minute=0)
 scheduler.start()
-
 # ==============================================================================
 # SEÇÃO 4: ROTAS DE AUTENTICAÇÃO E SEGURANÇA GLOBAL
 # ==============================================================================
@@ -409,15 +408,16 @@ def adicionar():
     prioridade = request.form.get('prioridade')
     tipo = request.form.get('tipo') or 'texto'
     vencimento = request.form.get('data_vencimento') or None
+    hora_vencimento = request.form.get('hora_vencimento') or None  # <-- ADICIONADO
     aviso = request.form.get('dias_aviso') or None
     recorrencia = request.form.get('recorrencia') or 'Nenhuma'
 
     with conectar_banco() as conn:
         cursor = conn.cursor()
         cursor.execute('''
-            INSERT INTO notas (titulo, conteudo, categoria, prioridade, tipo, data_vencimento, dias_aviso, recorrencia, usuario_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (titulo, conteudo, categoria, prioridade, tipo, vencimento, aviso, recorrencia, u_id))
+            INSERT INTO notas (titulo, conteudo, categoria, prioridade, tipo, data_vencimento, hora_vencimento, dias_aviso, recorrencia, usuario_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (titulo, conteudo, categoria, prioridade, tipo, vencimento, hora_vencimento, aviso, recorrencia, u_id))
         
         nota_id = cursor.lastrowid
 
@@ -446,14 +446,15 @@ def editar(id):
         prioridade = request.form['prioridade']
         tipo = request.form['tipo']
         data_vencimento = request.form['data_vencimento'] or None
+        hora_vencimento = request.form['hora_vencimento'] or None  # <-- ADICIONADO
         dias_aviso = request.form['dias_aviso'] or None
         recorrencia = request.form.get('recorrencia') or 'Nenhuma'
 
         cursor.execute("""
             UPDATE notas 
-            SET titulo = ?, conteudo = ?, categoria = ?, prioridade = ?, tipo = ?, data_vencimento = ?, dias_aviso = ?, recorrencia = ?
+            SET titulo = ?, conteudo = ?, categoria = ?, prioridade = ?, tipo = ?, data_vencimento = ?, hora_vencimento = ?, dias_aviso = ?, recorrencia = ?
             WHERE id = ? AND usuario_id = ?
-        """, (titulo, conteudo, categoria, prioridade, tipo, data_vencimento, dias_aviso, recorrencia, id, u_id))
+        """, (titulo, conteudo, categoria, prioridade, tipo, data_vencimento, hora_vencimento, dias_aviso, recorrencia, id, u_id))
         
         conn.commit()
         conn.close()
@@ -489,29 +490,43 @@ def concluir(id):
             recorrencia = nota.get('recorrencia', 'Nenhuma')
             data_venc = nota.get('data_vencimento')
 
-            # 2. Se for uma nota recorrente com data de vencimento, gera a próxima automaticamente
+            # 2. Se for uma nota recorrente com data de vencimento, verifica a próxima
             if recorrencia and recorrencia != 'Nenhuma' and data_venc:
                 prox_vencimento = calcular_proximo_vencimento(data_venc, recorrencia)
                 
                 if prox_vencimento:
+                    # TRAVA ANTI-DUPLICAÇÃO:
+                    # Verifica se já existe uma nota idêntica para o mesmo usuário na próxima data
                     cursor.execute('''
-                        INSERT INTO notas (titulo, conteudo, categoria, prioridade, tipo, data_vencimento, dias_aviso, recorrencia, usuario_id)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ''', (
-                        nota['titulo'], nota['conteudo'], nota['categoria'], 
-                        nota['prioridade'], nota['tipo'], prox_vencimento, 
-                        nota['dias_aviso'], recorrencia, u_id
-                    ))
-                    nova_nota_id = cursor.lastrowid
+                        SELECT id FROM notas 
+                        WHERE usuario_id = ? 
+                          AND titulo = ? 
+                          AND data_vencimento = ? 
+                          AND status != 'Excluido'
+                    ''', (u_id, nota['titulo'], prox_vencimento))
+                    
+                    nota_ja_existente = cursor.fetchone()
 
-                    # Caso a nota seja um checklist, duplica os itens marcando todos como desmarcados (0) para o novo mês
-                    if nota['tipo'] == 'checklist':
-                        cursor.execute("SELECT texto FROM itens_checklist WHERE nota_id = ?", (id,))
-                        itens = cursor.fetchall()
-                        for item in itens:
-                            cursor.execute("INSERT INTO itens_checklist (nota_id, texto, concluido) VALUES (?, ?, 0)", (nova_nota_id, item['texto']))
+                    # Só insere a nova nota se a próxima ocorrência AINDA NÃO EXISTIR no sistema
+                    if not nota_ja_existente:
+                        cursor.execute('''
+                            INSERT INTO notas (titulo, conteudo, categoria, prioridade, tipo, data_vencimento, dias_aviso, recorrencia, usuario_id)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ''', (
+                            nota['titulo'], nota['conteudo'], nota['categoria'], 
+                            nota['prioridade'], nota['tipo'], prox_vencimento, 
+                            nota['dias_aviso'], recorrencia, u_id
+                        ))
+                        nova_nota_id = cursor.lastrowid
 
-            # 3. Finaliza a nota atual colocando o status como Concluido
+                        # Caso a nota seja um checklist, duplica os itens desmarcados
+                        if nota['tipo'] == 'checklist':
+                            cursor.execute("SELECT texto FROM itens_checklist WHERE nota_id = ?", (id,))
+                            itens = cursor.fetchall()
+                            for item in itens:
+                                cursor.execute("INSERT INTO itens_checklist (nota_id, texto, concluido) VALUES (?, ?, 0)", (nova_nota_id, item['texto']))
+
+            # 3. Finaliza a nota atual alterando o status para 'Concluido'
             concluido = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             cursor.execute("UPDATE notas SET status = 'Concluido', data_criacao = ? WHERE id = ? AND usuario_id = ?", (concluido, id, u_id))
             conn.commit()
@@ -707,7 +722,7 @@ def esvaziar_lixeira():
     return redirect(url_for('lixeira'))
 
 # ==============================================================================
-# SEÇÃO 10: CALENDÁRIO E API REST
+# SEÇÃO 10: CALENDÁRIO // API REST // NOTIFICAÇÃO (LEMBRETE)
 # ==============================================================================
 @app.route('/calendario')
 def calendario():
@@ -752,6 +767,28 @@ def api_eventos():
 
     return jsonify(eventos)
 
+@app.route('/api/lembretes-hoje')
+def api_lembretes_hoje():
+    u_id = session.get('usuario_id')
+    if not u_id:
+        return jsonify([])
+
+    hoje = date.today().strftime('%Y-%m-%d')
+    with conectar_banco() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT id, titulo, hora_vencimento 
+            FROM notas 
+            WHERE usuario_id = ? 
+              AND data_vencimento = ? 
+              AND status != 'Concluido' 
+              AND status != 'Excluido'
+              AND hora_vencimento IS NOT NULL
+        ''', (u_id, hoje))
+        
+        notas = [dict(row) for row in cursor.fetchall()]
+        return jsonify(notas)
+
 # ==============================================================================
 # SEÇÃO 11: ROTAS PWA
 # ==============================================================================
@@ -763,7 +800,7 @@ def manifest():
 def service_worker():
     return app.send_static_file('sw.js')
 
-# verificar_e_enviar_alertas() #teste de envio para email
+verificar_e_enviar_alertas() #teste de envio para email
 
 # ==============================================================================
 # EXECUÇÃO DO SERVIDOR
